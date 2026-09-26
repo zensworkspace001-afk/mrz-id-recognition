@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Callable, Optional
 
-from .mrz import find_mrz_lines, parse_mrz
+from .mrz import find_mrz_lines, fix_filler_noise, parse_mrz
 from .normalize import names_match, parse_date, strip_diacritics, taiwan_id_valid
 from .router import route
 from .schema import DocRecord, image_hash
@@ -49,7 +49,9 @@ class Pipeline:
         if getattr(ocr_text, "uncertain_name", False):
             reasons.append("MRZ 姓名行各次辨識結果不一致")
         lines = find_mrz_lines(ocr_text)
+        fixes = []
         if lines:
+            lines, fixes = fix_filler_noise(lines)
             try:
                 mrz = parse_mrz(lines)
             except ValueError as e:
@@ -63,6 +65,8 @@ class Pipeline:
 
         viz = self.c.viz_extract(rect, tpl) if tpl else {}
         self._merge(rec, mrz, viz, tpl)
+        if mrz and fixes:
+            rec.mrz["auto_fixes"] = fixes
         self._validate(rec, mrz, tpl)
         rec.needs_review = bool(reasons)
         if self.storage is not None:

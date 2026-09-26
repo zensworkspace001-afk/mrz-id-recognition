@@ -198,6 +198,49 @@ def _rebuild_line2(b: str) -> str:
     return cands[0]
 
 
+# 常被 OCR 從 '<' 誤讀成的字母（防偽底紋上尤其常見，例如 <<<< 讀成 KKKK）。
+# 注意 A、K、U 的字值是 10、20、30，乘上任何權重都是 10 的倍數，檢查碼永遠分不出它們和 '<'（字值 0）。
+CHEVRON_LOOKALIKES = frozenset("KSECX")
+
+
+def _filler_tail(field: str, min_run: int) -> int:
+    """欄位尾端的填充區起點：從連續 min_run 個 '<' 開始、之後只有 '<' 與像 '<' 的字母，而且至少有一個字母。
+    找不到回傳 -1。"""
+    for m in re.finditer("<" * min_run, field):
+        tail = field[m.start():]
+        letters = set(tail) - {"<"}
+        if not letters:
+            return -1  # 尾端已經全是 '<'
+        if letters <= CHEVRON_LOOKALIKES:
+            return m.start()
+    return -1
+
+
+def fix_filler_noise(lines: tuple) -> tuple[tuple, list]:
+    """把 MRZ 填充區裡被讀成字母的 '<' 改回來，回傳 (修正後各行, 修正說明)。只在 OCR 結果上使用（手動輸入不改）。
+    - 姓名欄：ICAO 規定姓與名以 '<<' 分隔、名字之間只用單個 '<'，所以連續 3 個 '<' 之後姓名一定已經結束，
+      之後只能是 '<'。尾端只剩 K／S／E／C／X 時改回 '<'；出現其他字母可能是姓名本身被讀錯，不動它（交給複核）。
+    - 護照第二行的個人號碼欄：資料之後連續 2 個 '<' 起的尾端，同樣只改像 '<' 的字母，而且改完檢查碼仍要通過。"""
+    lines, notes = list(lines), []
+    name_idx, name_start = (2, 0) if len(lines) == 3 else (0, 5)
+    field = lines[name_idx][name_start:]
+    p = _filler_tail(field, 3)
+    if p >= 0:
+        noise = field[p:].replace("<", "")
+        lines[name_idx] = lines[name_idx][:name_start] + field[:p] + "<" * (len(field) - p)
+        notes.append(f"姓名欄結尾的填充符號被讀成 {noise}，已改回 <")
+    if len(lines) == 2:
+        l2 = lines[1]
+        pers, cd = l2[28:42], l2[42]
+        p = _filler_tail(pers, 2)
+        if p >= 0:
+            fixed = pers[:p] + "<" * (len(pers) - p)
+            if _cd_ok(fixed, cd):
+                lines[1] = l2[:28] + fixed + l2[42:]
+                notes.append(f"個人號碼欄結尾的填充符號被讀成 {pers[p:].replace('<', '')}，已改回 <")
+    return tuple(lines), notes
+
+
 def find_mrz_lines(ocr_text: str) -> Optional[tuple]:
     """從一段 OCR 文字中找出 MRZ（容許 '<' 數量被 OCR 弄錯）。
     TD3 回傳 2 行、TD1 回傳 3 行；兩種都像時以 TD3 優先。"""

@@ -441,8 +441,12 @@ class TestPipeline(unittest.TestCase):
 
     def test_name_noise_flagged(self):
         l1, l2 = build_td3("IDN", "WAYAN", "", "W7910271", "IDN", "721007", "F", "310703")
-        l1 = l1[:20] + "CEE<KEEEE" + l1[29:]
-        rec = self._pipe(l1 + "\n" + l2).process(None, b"img6")
+        # 只有像 '<' 的字母：自動改回 '<'
+        rec = self._pipe(l1[:20] + "CEE<KEEEE" + l1[29:] + "\n" + l2).process(None, b"img6")
+        self.assertNotIn("MRZ 姓名欄有雜訊", rec.review_reasons)
+        self.assertEqual((rec.surname, rec.given_names), ("WAYAN", ""))
+        # 其他字母：不自動修正，送複核
+        rec = self._pipe(l1[:20] + "RTB<MNOPQ" + l1[29:] + "\n" + l2).process(None, b"img6b")
         self.assertIn("MRZ 姓名欄有雜訊", rec.review_reasons)
 
     def test_arc_with_td1_mrz(self):
@@ -485,6 +489,26 @@ class TestPipeline(unittest.TestCase):
         self.assertIn("personal_number 視覺區與 MRZ 不一致", rec.review_reasons)
         self.assertTrue(any(x.startswith("發照日期與出生日期或到期日不符") for x in rec.review_reasons), rec.review_reasons)
         self.assertEqual(rec.personal_number, "A223456781")
+
+    def test_filler_noise_fixed_only_when_safe(self):
+        from idpipe.mrz import fix_filler_noise
+        l1, l2 = build_td3("TWN", "WANG", "MEI HUA", "300000001", "TWN", "900131", "F", "310130", "A123456789")
+        # 防偽底紋讓填充的 '<' 讀成 K、E；個人號碼欄尾端的 K 檢查碼分不出來（K 的字值 20）
+        n1 = l1[:30] + "KKKKEKKK" + l1[38:]
+        n2 = l2[:40] + "K" + l2[41:]
+        rec = self._pipe(n1 + "\n" + n2).process(None, b"noise1")
+        self.assertEqual((rec.given_names, rec.personal_number), ("MEI HUA", "A123456789"))
+        self.assertFalse(rec.needs_review, rec.review_reasons)
+        self.assertEqual((rec.mrz["line1"], rec.mrz["line2"]), (l1, l2))
+        self.assertEqual(len(rec.mrz["auto_fixes"]), 2)
+        # 填充區出現不像 '<' 的字母：可能是姓名被讀錯，不自動修正、送複核
+        n1 = l1[:30] + "ABQ" + l1[33:]
+        self.assertEqual(fix_filler_noise((n1, l2))[0][0], n1)
+        self.assertTrue(self._pipe(n1 + "\n" + l2).process(None, b"noise2").needs_review)
+        # 名字之間的單個 '<'、姓與名之間的 '<<' 不動
+        self.assertEqual(fix_filler_noise((l1, l2)), ((l1, l2), []))
+        c1 = "P<TWNLIN<<SHU<KAI<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+        self.assertEqual(fix_filler_noise((c1, l2))[0][0], c1)
 
     def test_no_mrz_unknown(self):
         rec = self._pipe("nothing here").process(None, b"img4")

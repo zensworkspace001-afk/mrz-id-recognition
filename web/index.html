@@ -283,6 +283,7 @@ function renderPhoto(r) {
   const nameChecked = ["surname", "given_names"].some(k => rec.fields[k] && "viz_value" in rec.fields[k]);
   const notes = [];
   if (r.mrz && !nameChecked) notes.push("姓名只來自 MRZ（姓名行沒有檢查碼），未經視覺區比對；請目視確認姓名與照片上一致。");
+  for (const f of rec.mrz?.auto_fixes || []) notes.push(`MRZ 自動修正：${esc(f)}（填充區只能是 &lt;，姓名與號碼本身沒有更動）。`);
   if (rec.name_native) notes.push(`中文姓名「${esc(rec.name_native)}」只從視覺區讀取，無法用 MRZ 驗證（可能讀錯字），請目視確認。`);
   const caveat = notes.length ? `<ul>${notes.map(n => `<li>${n}</li>`).join("")}</ul>` : "";
   const status = okAll
