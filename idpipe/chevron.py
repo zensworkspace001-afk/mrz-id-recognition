@@ -177,8 +177,11 @@ def correct_line(binary, box, text: str) -> str:
         # 含數字的行有檢查碼：TD3 第二行依位置類型分段重讀，只有通過的檢查碼比原 OCR 結果多才採用。
         # （不直接用對齊結果：對齊可能把號碼整段位移、又碰巧通過檢查碼，合成資料實測過）
         if len(gl) == 44 and "?" not in line:
+            raw = _td3_line2_score(text)
+            if raw >= 5:  # 檢查碼已全部通過，不必重讀（每次重讀要多做約 8 次 OCR）
+                return text
             cand = _reread_by_class(binary, gl, line, TD3_LINE2_CLASSES)
-            if _td3_line2_score(cand) > _td3_line2_score(text):
+            if _td3_line2_score(cand) > raw:
                 return cand
         return text
     line = _reread_runs(binary, gl, line)

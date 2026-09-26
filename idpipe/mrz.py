@@ -209,7 +209,11 @@ def find_mrz_lines(ocr_text: str) -> Optional[tuple]:
     td3 = [s for s in cands if len(s) >= 12]  # 短行只可能是 TD1 的姓名行（例如 LIN<MAY<LEE 漏讀尾端 <）
     for i in range(len(td3) - 1):
         a, b = td3[i], td3[i + 1]
-        if a[0] == "P" and "<" in a[:6] and len(b) >= 29 and any(ch.isdigit() for ch in b):
+        # 第二個字元的 '<' 常被讀成 S/K/E/C（實拍護照：P<TWN… 讀成 PSTWN…），只要第 3～5 字是國家碼字母就接受
+        first_ok = "<" in a[:6] or (len(a) >= 5 and a[1] in "SKEC" and a[2:5].isalpha())
+        if a[0] == "P" and first_ok and len(b) >= 29 and any(ch.isdigit() for ch in b):
+            if a[1] in "SKEC" and "<" not in a[:6]:
+                a = a[0] + "<" + a[2:]
             a = a.ljust(44, "<")[:44]
             a = a[:5].translate(_TO_ALPHA) + a[5:].translate(_TO_ALPHA)  # 第一行只有字母，數字必為 OCR 誤讀（檢查碼不涵蓋姓名）
             b = repair_document_number(_fix_line2(_rebuild_line2(b)[:44].ljust(44, "<")))

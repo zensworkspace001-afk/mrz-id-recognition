@@ -28,7 +28,7 @@ EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
 def _mrz_score(img) -> int:
     """快速看拉正後的影像能讀出幾個 MRZ 檢查碼（只取第一個全過的結果，不做姓名投票）。
     全部通過回傳 99；讀不到 MRZ 回傳 -1。"""
-    lines = find_mrz_lines(ocr_mrz_region(img, min_reads=1))
+    lines = find_mrz_lines(ocr_mrz_region(img, min_reads=1, quick=True))
     if not lines:
         return -1
     try:

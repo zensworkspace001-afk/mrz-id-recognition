@@ -47,6 +47,9 @@ MRZ_VARIANTS = [
 ]
 
 
+MRZ_CROP_CHAR_H = (40, 30)  # 精確裁切的 MRZ 縮放到的字高（像素）；實拍護照在 40 讀得最好，30 與拉正頁面上的字高相近
+
+
 def _ocr_mrz_text(img) -> str:
     """MRZ 用的 OCR：以 image_to_data 同時取得文字與行框，像 MRZ 的行（24 字以上）再依字形校正
     （'<' 誤讀成 K/S/E、多讀或漏讀字；見 chevron.py）。回傳與 image_to_string 相同格式的多行文字。"""
@@ -98,25 +101,34 @@ def vote_name(reads: list) -> tuple:
     return "".join(out), uncertain
 
 
-def ocr_mrz_region(rectified, bottom_ratios: tuple = (0.32, 0.45), min_reads: int = 3) -> str:
+def ocr_mrz_region(rectified, bottom_ratios: tuple = (0.32, 0.45), min_reads: int = 3, quick: bool = False) -> str:
     """只辨識拉正後影像的下方區域（MRZ 所在），依序用各裁切範圍 × MRZ_VARIANTS 各種前處理辨識。
     - 有檢查碼的行：取第一個檢查碼全過的結果。
     - 姓名行（沒有檢查碼）：收集各次讀法逐格多數決（vote_name）；讀到 min_reads 次、或 2 次完全相同才停止，
       不夠就繼續用下一個裁切範圍讀（實拍護照：第一種讀法把姓的 I 讀成 L，其餘讀法正確）。
       各次讀法打平或只有一次時，回傳值的 uncertain_name 為 True。
-    - 護照 MRZ 在下方 32%；卡片（居留證 TD1 三行）位置較高，所以也讀下方 45%。
+    - 先用 MRZ 定位（locate.py）把 MRZ 精確裁出、轉水平、統一字高（上方的視覺區文字、照片、頁面外的背景都會干擾
+      Tesseract，實拍護照在「下方 32%」裡大多數前處理都找不到 MRZ）；定位不到或讀不夠時，
+      再讀下方 32%（護照）與 45%（卡片 TD1 三行位置較高）。
     - 都沒有檢查碼全過的結果時，回傳通過最多檢查碼的那組（交給下游標記哪個檢查碼失敗）；
-      連 MRZ 格式都找不到才回傳第一次的原始文字。"""
+      連 MRZ 格式都找不到才回傳第一次的原始文字。
+    - quick=True（拉正時探測方向用）：只讀精確裁切（定位不到才讀下方裁切），不讀備援。"""
+    from .locate import locate_mrz
     from .mrz import find_mrz_lines, name_line_index, parse_mrz
     h = rectified.shape[0]
     first, checked, best, reads = None, None, None, {}
+    crops = []
+    loc = locate_mrz(rectified)
+    if loc is not None:
+        crops += [loc.crop(rectified, char_h=ch, upright=True, pad=0.8) for ch in MRZ_CROP_CHAR_H]
+    if not (quick and crops):
+        crops += [cv2.cvtColor(rectified[int(h * (1 - r)):], cv2.COLOR_BGR2GRAY) for r in bottom_ratios]
 
     def enough():
         rs = reads.get(len(checked), []) if checked else []
         return len(rs) >= min_reads or (len(rs) >= 2 and len(set(rs)) == 1)
 
-    for ratio in bottom_ratios:
-        gray = cv2.cvtColor(rectified[int(h * (1 - ratio)):], cv2.COLOR_BGR2GRAY)
+    for gray in crops:
         for prep in MRZ_VARIANTS:
             text = _ocr_mrz_text(prep(gray))
             first = first if first is not None else text

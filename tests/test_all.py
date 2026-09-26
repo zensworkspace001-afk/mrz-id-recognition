@@ -77,6 +77,12 @@ class TestMrz(unittest.TestCase):
         a, b = find_mrz_lines(l1.replace("IND", "TND") + "\n" + l2.replace("680921", "G80921"))
         self.assertEqual((a, b), (l1, l2))
 
+    def test_first_line_second_char_misread(self):
+        # 實拍護照：P<TWN… 的 '<' 被讀成 S
+        l1, l2 = build_td3("TWN", "LIANG", "MEI HUA", "300000001", "TWN", "900131", "F", "310130", "A123456789")
+        a, b = find_mrz_lines("PS" + l1[2:] + "\n" + l2)
+        self.assertEqual((a, b), (l1, l2))
+
     def test_mononym(self):
         l1, l2 = build_td3("IDN", "SUHARTO", "", "A1234567", "IDN", "800101", "M", "300101")
         r = parse_td3(l1, l2)

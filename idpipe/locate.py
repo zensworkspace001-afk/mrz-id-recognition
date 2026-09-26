@@ -55,15 +55,16 @@ class MrzLocation:
         tr = br + v * page_h * px
         return [tl.tolist(), tr.tolist(), br.tolist(), bl.tolist()]
 
-    def crop(self, image, char_h: int = 32):
-        """把 MRZ 區塊轉成水平並裁切（灰階），縮放到字高 char_h 像素。方向同 u／v（可能上下顛倒）。"""
+    def crop(self, image, char_h: int = 32, upright: bool = False, pad: float = 0.3):
+        """把 MRZ 區塊轉成水平並裁切（灰階），縮放到字高 char_h 像素，四周留 pad 倍字高的邊。
+        方向同 u／v（可能上下顛倒）；upright=True 表示影像已經轉正（例如拉正後的頁面），強制文字由左到右。"""
         pts = np.vstack([np.array(l) for l in self.lines])
-        pu, pv = pts @ self.u, pts @ self.v
-        pad = 0.3 * self.line_height
+        u, v = (self.u, self.v) if not upright or self.u[0] >= 0 else (-self.u, -self.v)
+        pu, pv = pts @ u, pts @ v
+        pad = pad * self.line_height
         x0, x1, y0, y1 = pu.min() - pad, pu.max() + pad, pv.min() - pad, pv.max() + pad
         k = char_h / max(self.line_height, 1.0)
         W, H = max(1, int((x1 - x0) * k)), max(1, int((y1 - y0) * k))
-        u, v = self.u, self.v
         src = np.array([u * x0 + v * y1, u * x1 + v * y1, u * x1 + v * y0], np.float32)
         dst = np.array([[0, 0], [W, 0], [W, H]], np.float32)
         gray = image if image.ndim == 2 else cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
