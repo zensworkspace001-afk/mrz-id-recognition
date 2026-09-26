@@ -30,6 +30,17 @@ def _sharpen(g, amount=1.5, sigma=2):
     return cv2.addWeighted(g, 1 + amount, cv2.GaussianBlur(g, (0, 0), sigma), -amount, 0)
 
 
+def _clahe(g):
+    """局部對比增強：暗、低對比的照片把字拉出來。"""
+    return cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8)).apply(g)
+
+
+def _flatten(g):
+    """除以大範圍模糊的背景，壓平光照（逆光：證件一側亮、一側暗）。"""
+    bg = cv2.GaussianBlur(g, (0, 0), max(g.shape) / 20)
+    return cv2.normalize(cv2.divide(g, bg, scale=200), None, 0, 255, cv2.NORM_MINMAX)
+
+
 def _prep(gray, scale=2.0):
     return _otsu(cv2.GaussianBlur(_up(gray, scale), (3, 3), 0))
 
@@ -44,6 +55,11 @@ MRZ_VARIANTS = [
     lambda g: _adaptive(_sharpen(_up(g, 1.5))),
     lambda g: _prep(g, 2.0),
     lambda g: _prep(g, 3.0),
+    # 光線不佳時的補救，放在最後：前面的讀法已經足夠時不會執行，清楚的照片不會變慢。
+    # 模擬逆光／偏暗（14 張 × 5 種光線）：實拍護照逆光從檢查碼失敗變成全對，偏暗的讀錯欄位變少。
+    lambda g: _adaptive(_clahe(_up(g, 2.0))),
+    lambda g: _sharpen(_clahe(_flatten(_up(g, 1.5)))),
+    lambda g: _prep(_flatten(g), 2.0),
 ]
 
 

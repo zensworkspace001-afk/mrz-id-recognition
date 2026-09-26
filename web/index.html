@@ -104,6 +104,22 @@ pre.raw{font-family:var(--mono);font-size:12px;background:var(--sunk);border-rad
 .qlist .ic{width:18px;flex:none;font-weight:700;text-align:center}
 .qlist .ok .ic{color:var(--good)} .qlist .warn .ic{color:var(--warn)} .qlist .fail .ic{color:var(--bad)}
 .qlist b{font-weight:600;min-width:64px;display:inline-block}
+.edit td{padding:3px 4px;vertical-align:middle}
+.edit th{white-space:nowrap}
+.edit input{font:inherit;font-family:var(--mono);font-size:12.5px;width:100%;min-width:0;border:1px solid transparent;border-radius:6px;padding:4px 6px;background:transparent;color:var(--ink)}
+.edit input:hover{border-color:var(--line)}
+.edit input:focus{background:var(--surface);border-color:var(--accent)}
+.edit td.bad input{background:var(--bad-wash);border-color:var(--bad)}
+.edit td.warn input{background:var(--warn-wash);border-color:var(--warn)}
+.edit td.edited input{background:var(--accent-wash);border-color:var(--accent)}
+.edit td.invalid input{background:var(--bad-wash);border-color:var(--bad);border-style:dashed}
+.edit tr.off{opacity:.45}
+.edit .fname{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px}
+.log td{font-size:12.5px}
+.log .mono{white-space:nowrap}
+.tag{display:inline-block;font-size:11px;border-radius:4px;padding:0 6px;white-space:nowrap}
+.tag.bad{background:var(--bad-wash);color:var(--bad)} .tag.warn{background:var(--warn-wash);color:var(--warn)}
+.tag.edited{background:var(--accent-wash);color:var(--accent)}
 @media (max-width:760px){.imgs,.grid2{grid-template-columns:minmax(0,1fr)}.queue .fname{max-width:120px}}
 </style>
 </head>
@@ -147,6 +163,16 @@ pre.raw{font-family:var(--mono);font-size:12px;background:var(--sunk);border-rad
         <tbody id="queueBody"></tbody>
       </table></div>
       <p class="hint">免複核的預設勾選；需複核的請看過詳細結果、確認無誤後再勾選（會記為已人工確認）。建議重拍與失敗的不能匯出。</p>
+      <div id="editArea" hidden>
+        <h2>資料預覽與修改</h2>
+        <p class="hint">這就是匯出的內容，每一格都可以直接修改（按 Enter 或點別處即儲存）。
+          <span class="tag bad">紅框</span> 系統發現問題，必須確認；<span class="tag warn">黃框</span> 不尋常或無法自動驗證，請目視確認；<span class="tag edited">藍框</span> 已人工修改。滑鼠移到格子上可看原因。</p>
+        <div class="tbl"><table class="edit"><thead id="editHead"></thead><tbody id="editBody"></tbody></table></div>
+        <h2>注意事項與修改紀錄</h2>
+        <p class="hint">列出每一筆系統發現的差異，以及哪些欄位由人工修改（原值 → 新值、時間）。匯出 SQL 時修改紀錄會一起寫入「資料表名稱_changes」。</p>
+        <div class="tbl"><table class="log"><thead><tr><th>檔名</th><th>欄位</th><th>系統提示</th><th>系統讀值</th><th>視覺區讀值</th><th>人工修改</th><th>修改時間</th></tr></thead><tbody id="logBody"></tbody></table></div>
+        <div class="row"><button class="btn ghost small" id="exportLog" disabled>下載修改紀錄 CSV</button></div>
+      </div>
       <div class="exportbar">
         <label for="dialect">資料庫</label>
         <select id="dialect">
@@ -324,12 +350,15 @@ function canExport(it) {
 function renderExportBar() {
   const pending = items.filter(it => outcome(it) === "pending").length;
   const chosen = items.filter(it => canExport(it) && it.include).length;
-  $("#exportSql").disabled = $("#exportCsv").disabled = pending > 0 || chosen === 0;
-  $("#exportHint").textContent = pending ? `還有 ${pending} 張處理中，全部完成後才能匯出` : `已勾選 ${chosen} 筆`;
+  const invalid = items.filter(it => canExport(it) && it.include && hasInvalid(it)).length;
+  $("#exportSql").disabled = $("#exportCsv").disabled = pending > 0 || chosen === 0 || invalid > 0;
+  $("#exportHint").textContent = pending ? `還有 ${pending} 張處理中，全部完成後才能匯出`
+    : invalid ? `有 ${invalid} 筆的修改格式不對（虛線紅框），改好才能匯出` : `已勾選 ${chosen} 筆`;
 }
 function renderQueue() {
   $("#batch").hidden = items.length === 0;
   renderExportBar();
+  renderEditArea();
   const n = k => items.filter(it => outcome(it) === k).length;
   const pending = n("pending");
   $("#counts").innerHTML = [
@@ -341,7 +370,7 @@ function renderQueue() {
     n("failed") ? `<span class="pill bad">✗ 失敗 ${n("failed")}</span>` : "",
   ].join("");
   $("#queueBody").innerHTML = items.map(it => {
-    const rec = it.result && it.result.record;
+    const rec = it.result && !it.result.error ? effectiveRecord(it) : null;
     const name = rec ? [rec.surname, rec.given_names].filter(Boolean).join(", ") : "";
     const doc = rec ? (rec.document_number || rec.residence?.arc_number || "") : "";
     const force = it.state === "unusable" && it.check && !it.check.error
@@ -487,14 +516,14 @@ $("#clearAll").addEventListener("click", () => {
   items.length = 0; selected = null; renderQueue(); renderDetail();
 });
 $("#exportCsv").addEventListener("click", () => {
-  const cols = ["檔名","照片檢查","結果","複核原因","版型","姓","名","國籍","性別","出生日期","證件號碼","個人號碼","到期日","統一證號","居留期限","MRZ 檢查碼通過","MRZ 第1行","MRZ 第2行","MRZ 第3行"];
+  const cols = ["檔名","照片檢查","結果","複核原因","人工修改欄位","版型","姓","名","國籍","性別","出生日期","證件號碼","個人號碼","到期日","統一證號","居留期限","MRZ 檢查碼通過","MRZ 第1行","MRZ 第2行","MRZ 第3行"];
   const label = {ok:"免複核", review:"需複核", unusable:"建議重拍（未辨識）", failed:"失敗", pending:"處理中"};
   const rows = items.filter(it => canExport(it) && it.include).map(it => {
-    const rec = it.result && !it.result.error ? it.result.record : null;
+    const rec = it.result && !it.result.error ? effectiveRecord(it) : null;
     const chk = !it.check ? "" : it.check.error ? "無法讀取" : !it.check.usable ? "建議重拍：" + it.check.checks.filter(x => x.status === "fail").map(x => x.label).join("、")
       : it.check.checks.some(x => x.status === "warn") ? "可用（提醒：" + it.check.checks.filter(x => x.status === "warn").map(x => x.label).join("、") + "）" : "可用";
     return [it.name, chk, label[outcome(it)], rec ? rec.review_reasons.join("；") : (it.result && it.result.error) || "",
-      rec?.template_key, rec?.surname, rec?.given_names, rec?.nationality, rec?.sex, rec?.date_of_birth, rec?.document_number,
+      (rec?.edited_fields || []).map(k => FIELD[k] || k).join("、"), rec?.template_key, rec?.surname, rec?.given_names, rec?.nationality, rec?.sex, rec?.date_of_birth, rec?.document_number,
       rec?.personal_number, rec?.date_of_expiry, rec?.residence?.arc_number, rec?.residence?.valid_until,
       rec ? (rec.mrz.checksum_valid ? "是" : rec.mrz.line1 ? "否" : "") : "", rec?.mrz.line1, rec?.mrz.line2, rec?.mrz.line3];
   });
@@ -510,17 +539,228 @@ function download(blob, name) {
 $("#exportSql").addEventListener("click", async () => {
   const chosen = items.filter(it => canExport(it) && it.include);
   const dialect = $("#dialect").value, table = $("#tableName").value.trim();
-  const payload = {dialect, table, items: chosen.map(it => ({record: it.result.record, source_file: it.name, reviewed: outcome(it) === "review"}))};
+  const payload = {dialect, table, items: chosen.map(it => ({record: effectiveRecord(it), source_file: it.name,
+    reviewed: outcome(it) === "review" || !!it.log?.length}))};
   try {
     const res = await fetch("/api/sql", {method:"POST", body: JSON.stringify(payload), headers:{"Content-Type":"application/json"}});
     const r = await res.json();
     if (r.error) { $("#exportHint").textContent = r.error; return; }
     download(new Blob([r.sql], {type:"application/sql;charset=utf-8"}), `${table}_${dialect}_${stamp()}.sql`);
-    $("#exportHint").textContent = `已匯出 ${r.count} 筆（${$("#dialect").selectedOptions[0].text}）`;
+    $("#exportHint").textContent = `已匯出 ${r.count} 筆（${$("#dialect").selectedOptions[0].text}）` + (r.changes ? `，含 ${r.changes} 筆修改紀錄` : "");
   } catch (e) {
     $("#exportHint").textContent = networkError(e);
   }
 });
+// ---- 資料預覽與修改 ----
+const EDIT_COLS = ["surname", "given_names", "name_native", "nationality", "sex", "date_of_birth", "document_number",
+  "personal_number", "date_of_issue", "date_of_expiry", "place_of_birth", "authority", "arc_number", "valid_until"];
+const CORE = new Set(["surname", "given_names", "nationality", "sex", "date_of_birth", "document_number", "date_of_expiry"]);
+const RESIDENCE = new Set(["arc_number", "valid_from", "valid_until", "employer", "purpose"]);
+const DATE_KEYS = new Set(["date_of_birth", "date_of_issue", "date_of_expiry", "valid_from", "valid_until"]);
+const NO_UPPER = new Set(["name_native"]);
+const today = () => new Date().toISOString().slice(0, 10);
+const editable = () => items.filter(canExport);
+const blank = v => v == null || v === "";
+
+function origValue(rec, k) {
+  if (RESIDENCE.has(k)) return rec.residence?.[k] ?? null;
+  return rec[k] ?? rec.fields?.[k]?.value ?? null;
+}
+function curValue(it, k) {
+  return it.edits && k in it.edits ? it.edits[k] : origValue(it.result.record, k);
+}
+function invalidMsg(k, v) {
+  if (blank(v)) return null;
+  if (DATE_KEYS.has(k)) {
+    const d = /^\d{4}-\d{2}-\d{2}$/.test(v) && new Date(v + "T00:00:00Z");
+    if (!d || isNaN(d) || d.toISOString().slice(0, 10) !== v) return "日期格式應為 YYYY-MM-DD（例如 1990-01-31）";
+  }
+  if (k === "sex" && !/^[MFX]$/.test(v)) return "性別只能是 M、F 或 X";
+  if (k === "nationality" && !/^[A-Z<]{3}$/.test(v)) return "國籍應為 3 碼國家代碼（例如 TWN）";
+  return null;
+}
+function normalizeInput(k, v) {
+  v = v.trim().replace(/\s+/g, " ");
+  if (!NO_UPPER.has(k)) v = v.toUpperCase();
+  if (DATE_KEYS.has(k)) {
+    const m = v.match(/^(\d{4})[\/.\-](\d{1,2})[\/.\-](\d{1,2})$/);
+    if (m) v = `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
+  }
+  return v;
+}
+// 系統對每個欄位的提示：{欄位: {level: bad|warn, msgs: [...]}}；另回傳無法對應到欄位的整筆提示
+function systemFlags(it) {
+  const rec = it.result.record, m = {}, general = [];
+  const add = (k, level, msg) => {
+    const f = m[k] ||= {level, msgs: []};
+    if (level === "bad") f.level = "bad";
+    if (!f.msgs.includes(msg)) f.msgs.push(msg);
+  };
+  for (const r of rec.review_reasons || []) {
+    let x;
+    if ((x = r.match(/^MRZ 檢查碼失敗: (.+)$/))) {
+      for (const n of x[1].split(",")) {
+        if (n === "composite") for (const k of ["document_number", "date_of_birth", "date_of_expiry", "personal_number"]) add(k, "warn", "MRZ 總檢查碼不符");
+        else add(n, "bad", "MRZ 檢查碼不符");
+      }
+    } else if ((x = r.match(/^([a-z_]+) (視覺區與 MRZ 不一致|信心低.*)$/))) {
+      add(x[1], "bad", x[2]);
+    } else if (/姓名/.test(r)) {
+      for (const k of ["surname", "given_names"]) add(k, "bad", r);
+    } else if (r.startsWith("發照日期")) {
+      add("date_of_issue", "bad", r);
+    } else if (/居留證號|統一證號/.test(r)) {
+      add("arc_number", "bad", r);
+    } else {
+      general.push(r);
+    }
+  }
+  // 不尋常或無法自動驗證（依目前的值，修改後會重新判斷）
+  const v = k => curValue(it, k), now = today();
+  const f = rec.fields || {};
+  if (rec.mrz?.line1) for (const k of ["surname", "given_names"]) {
+    if (!blank(v(k)) && !(f[k] && "viz_value" in f[k]) && !(it.edits && k in it.edits)) add(k, "warn", "只來自 MRZ（姓名行沒有檢查碼），未經視覺區比對，請對照照片確認");
+  }
+  if (!blank(v("name_native"))) add("name_native", "warn", "只從視覺區讀取，無法用 MRZ 驗證（可能讀錯字），請對照照片確認");
+  for (const [k, x] of Object.entries(f)) {
+    if (x.source === "viz" && k !== "name_native" && x.confidence != null && x.confidence < 0.9) add(k, "warn", `只來自視覺區，信心 ${x.confidence.toFixed(2)}`);
+  }
+  const isDate = k => !blank(v(k)) && !invalidMsg(k, v(k));
+  if (isDate("date_of_expiry") && v("date_of_expiry") < now) add("date_of_expiry", "warn", "證件已過期");
+  if (isDate("date_of_birth")) {
+    if (v("date_of_birth") > now) add("date_of_birth", "bad", "出生日期在未來");
+    else if (+now.slice(0, 4) - +v("date_of_birth").slice(0, 4) > 100) add("date_of_birth", "warn", "年齡超過 100 歲");
+  }
+  if (isDate("date_of_issue") && v("date_of_issue") > now) add("date_of_issue", "bad", "發照日期在未來");
+  if (isDate("valid_until") && v("valid_until") < now) add("valid_until", "warn", "居留期限已過");
+  const isCard = rec.doc_type === "arc" || (rec.template_key || "").includes("arc");
+  for (const k of CORE) if (blank(v(k)) && !(isCard && k === "given_names")) add(k, "warn", "沒有讀到");
+  return {fields: m, general};
+}
+function cellState(it, k, flags) {
+  const val = curValue(it, k), edited = it.edits && k in it.edits;
+  const bad = invalidMsg(k, blank(val) ? "" : String(val));
+  const f = flags.fields[k];
+  const tips = [];
+  if (bad) tips.push("格式不對：" + bad);
+  if (edited) tips.push(`已人工修改（系統讀值：${origValue(it.result.record, k) ?? "空白"}）`);
+  if (f) tips.push(...f.msgs);
+  const cls = bad ? "invalid" : edited ? "edited" : f ? f.level : "";
+  return {cls, title: tips.join("\n"), bad};
+}
+function hasInvalid(it) {
+  return Object.entries(it.edits || {}).some(([k, v]) => invalidMsg(k, v));
+}
+function editCols() {
+  return EDIT_COLS.filter(k => CORE.has(k) || editable().some(it => !blank(curValue(it, k))));
+}
+let editSig = "";
+function renderEditArea(force) {
+  const rows = editable();
+  $("#editArea").hidden = rows.length === 0;
+  const cols = editCols();
+  const sig = cols.join() + "|" + rows.map(it => `${it.id}:${it.include ? 1 : 0}`).join();
+  if (!force && sig === editSig) return;
+  editSig = sig;
+  $("#editHead").innerHTML = `<tr><th>檔名</th>${cols.map(k => `<th>${esc(FIELD[k] || k)}</th>`).join("")}</tr>`;
+  $("#editBody").innerHTML = rows.map(it => {
+    const flags = systemFlags(it);
+    const cells = cols.map(k => {
+      const st = cellState(it, k, flags), val = curValue(it, k);
+      return `<td class="${st.cls}" title="${esc(st.title)}"><input data-row="${it.id}" data-field="${k}" value="${esc(val ?? "")}" size="${Math.max(8, String(val ?? "").length + 2)}"
+        aria-label="${esc(it.name)} ${esc(FIELD[k] || k)}" spellcheck="false" autocomplete="off"></td>`;
+    }).join("");
+    return `<tr data-row="${it.id}" class="${it.include ? "" : "off"}"><td class="fname" title="${esc(it.name)}">${esc(it.name)}</td>${cells}</tr>`;
+  }).join("");
+  renderLog();
+}
+function refreshEditRow(it) {
+  const flags = systemFlags(it);
+  for (const inp of document.querySelectorAll(`#editBody input[data-row="${it.id}"]`)) {
+    const st = cellState(it, inp.dataset.field, flags);
+    inp.parentElement.className = st.cls;
+    inp.parentElement.title = st.title;
+  }
+}
+function logRows() {
+  const out = [];
+  for (const it of editable()) {
+    const rec = it.result.record, flags = systemFlags(it);
+    for (const r of flags.general) out.push({file: it.name, field: "（整筆）", note: r, level: "bad"});
+    const keys = [...new Set([...Object.keys(flags.fields), ...(it.log || []).map(c => c.field)])];
+    keys.sort((a, b) => EDIT_COLS.indexOf(a) - EDIT_COLS.indexOf(b));
+    for (const k of keys) {
+      const base = {file: it.name, field: FIELD[k] || k, ocr: origValue(rec, k), viz: rec.fields?.[k]?.viz_value};
+      const changes = (it.log || []).filter(c => c.field === k);
+      const f = flags.fields[k];
+      if (!changes.length) out.push({...base, note: f.msgs.join("；"), level: f.level});
+      for (const c of changes) out.push({...base, note: c.note || "", level: c.note ? "bad" : "", change: c});
+    }
+  }
+  return out;
+}
+function renderLog() {
+  const rows = logRows();
+  const time = t => new Date(t).toLocaleString("zh-TW", {hour12: false});
+  $("#logBody").innerHTML = rows.length ? rows.map(r => `<tr>
+      <td class="fname" title="${esc(r.file)}">${esc(r.file)}</td><td>${esc(r.field)}</td>
+      <td>${r.note ? `<span class="tag ${r.change ? "warn" : r.level}">${esc(r.note)}</span>` : "—"}</td>
+      <td class="mono">${esc(r.ocr) || "—"}</td><td class="mono">${esc(r.viz) || "—"}</td>
+      <td class="mono">${r.change ? `<span class="tag edited">${esc(r.change.old ?? "空白")} → ${esc(r.change.new ?? "空白")}</span>` : "未修改"}</td>
+      <td>${r.change ? esc(time(r.change.at)) : "—"}</td></tr>`).join("")
+    : `<tr><td colspan="7" class="hint">沒有需要注意的欄位，也沒有人工修改。</td></tr>`;
+  $("#exportLog").disabled = rows.length === 0;
+}
+function effectiveRecord(it) {
+  const orig = it.result.record, rec = structuredClone(orig);
+  for (const [k, v] of Object.entries(it.edits || {})) {
+    const val = blank(v) ? null : v;
+    if (RESIDENCE.has(k)) rec.residence = {...(rec.residence || {}), [k]: val};
+    else rec[k] = val;
+    rec.fields = rec.fields || {};
+    rec.fields[k] = {...(rec.fields[k] || {}), value: val, source: "human", ocr_value: origValue(orig, k)};
+  }
+  if (it.log?.length) {
+    rec.change_log = it.log;
+    rec.edited_fields = Object.keys(it.edits || {});
+    rec.reviewed_by_human = true;
+  }
+  return rec;
+}
+$("#editBody").addEventListener("change", e => {
+  const inp = e.target.closest("input[data-field]");
+  if (!inp) return;
+  const it = items.find(x => x.id === +inp.dataset.row), k = inp.dataset.field;
+  if (!it) return;
+  const val = normalizeInput(k, inp.value), prev = curValue(it, k) ?? "";
+  inp.value = val;
+  if (val === String(prev)) return;
+  const note = (systemFlags(it).fields[k]?.msgs || []).join("；");
+  it.edits ||= {};
+  it.log ||= [];
+  const orig = String(origValue(it.result.record, k) ?? "");
+  if (val === orig) delete it.edits[k];
+  else it.edits[k] = val;
+  // 格式不對的值只留在表格上（擋住匯出），不記入修改紀錄；改成有效值時，從上一個有效值記一筆
+  if (!invalidMsg(k, val)) {
+    const last = it.log.filter(c => c.field === k).pop();
+    const old = last ? (last.new ?? "") : orig;
+    if (val !== old) it.log.push({field: k, old: old === "" ? null : old, new: val === "" ? null : val, at: new Date().toISOString(), note: note || null});
+  }
+  refreshEditRow(it);
+  renderLog();
+  renderQueue();
+});
+$("#editBody").addEventListener("keydown", e => {
+  if (e.key === "Enter" && e.target.matches("input[data-field]")) e.target.blur();
+});
+$("#exportLog").addEventListener("click", () => {
+  const cols = ["檔名", "欄位", "系統提示", "系統讀值", "視覺區讀值", "原值", "新值", "修改時間（UTC）"];
+  const rows = logRows().map(r => [r.file, r.field, r.note, r.ocr, r.viz, r.change?.old, r.change?.new, r.change?.at]);
+  const csv = [cols, ...rows].map(r => r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\r\n");
+  download(new Blob(["﻿" + csv], {type: "text/csv;charset=utf-8"}), `修改紀錄_${stamp()}.csv`);
+});
+
 // ---- 本機 / 公開網站 ----
 if (!LOCAL) {
   $("#cloudBanner").hidden = false;

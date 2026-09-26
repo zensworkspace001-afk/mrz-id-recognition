@@ -202,6 +202,43 @@ class TestDetect(unittest.TestCase):
         q = check_photo(cv2.imread("data/synth/images/PHL_00007.jpg"))
         self.assertIn(("glare", "fail"), [(c["key"], c["status"]) for c in q["checks"]])
 
+    def test_photo_quality_rejects_shadow_on_mrz(self):
+        import cv2
+        import numpy as np
+        from idpipe.quality import check_photo
+        img = cv2.imread("data/synth/images/JPN_00001.jpg").astype(np.float32)
+        h, w = img.shape[:2]
+        m = np.ones((h, w), np.float32)  # 手的影子斜切過證件下半部（MRZ 左半邊）
+        cv2.fillPoly(m, [np.array([[0, int(h * 0.55)], [int(w * 0.6), h], [0, h]])], 0.3)
+        m = cv2.GaussianBlur(m, (0, 0), 15)[:, :, None]
+        q = check_photo((img * m).astype(np.uint8))
+        self.assertIn(("shadow", "fail"), [(c["key"], c["status"]) for c in q["checks"]])
+        q = check_photo(img.astype(np.uint8))
+        self.assertIn(("shadow", "ok"), [(c["key"], c["status"]) for c in q["checks"]])
+
+    def test_photo_quality_rejects_strong_tilt(self):
+        import cv2
+        import numpy as np
+        from idpipe.quality import check_photo
+
+        def tilted(img, deg):  # 證件繞垂直軸轉 deg 度（左右斜拍），從正前方拍
+            h, w = img.shape[:2]
+            f, b = 1.2 * max(h, w), np.radians(deg)
+            R = np.array([[np.cos(b), 0, np.sin(b)], [0, 1, 0], [-np.sin(b), 0, np.cos(b)]])
+            K = np.array([[f, 0, w / 2], [0, f, h / 2], [0, 0, 1]])
+            H = K @ np.column_stack([R[:, 0], R[:, 1], [0, 0, f]]) @ np.array([[1, 0, -w / 2], [0, 1, -h / 2], [0, 0, 1]])
+            c = H @ np.array([[0, w, w, 0], [0, 0, h, h], [1, 1, 1, 1]])
+            c = c[:2] / c[2]
+            T = np.array([[1, 0, -c[0].min()], [0, 1, -c[1].min()], [0, 0, 1]])
+            return cv2.warpPerspective(img, T @ H, (int(np.ptp(c[0])), int(np.ptp(c[1]))), borderValue=(200, 200, 200))
+
+        img = cv2.imread("data/synth/images/JPN_00001.jpg")
+        status = lambda q: dict((c["key"], c["status"]) for c in q["checks"]).get("tilt")
+        self.assertEqual(status(check_photo(img)), "ok")
+        q = check_photo(tilted(img, 40))
+        self.assertEqual(status(q), "fail")
+        self.assertFalse(q["usable"])
+
     def test_cropped_card_uses_full_frame(self):
         import numpy as np
         from idpipe.detect import detect_corners
@@ -519,6 +556,25 @@ class TestSqlExport(unittest.TestCase):
         self.assertIn("N'王美玲'", to_sql(rows, "sqlserver"))
         with self.assertRaises(ValueError):
             to_sql(rows, "postgresql", "x; DROP TABLE y")
+
+    def test_change_log_table(self):
+        import sqlite3
+        from idpipe.sqlexport import change_rows, row_of, to_sql
+        _, rec = self._rows()
+        rec["given_names"] = "MEI LIN"  # 網頁上人工修改後的值
+        rec["change_log"] = [{"field": "given_names", "old": "MEI LING", "new": "MEI LIN",
+                              "at": "2026-09-27T08:00:00.123Z", "note": "given_names 視覺區與 MRZ 不一致"}]
+        rows, changes = [row_of(rec, "a.jpg", reviewed=True)], change_rows(rec, "a.jpg")
+        db = sqlite3.connect(":memory:")
+        for _ in range(2):  # 重複匯入：修改紀錄不重複
+            db.executescript(to_sql(rows, "sqlite", "docs", changes))
+        self.assertEqual(db.execute("select given_names from docs").fetchone()[0], "MEI LIN")
+        self.assertEqual(db.execute("select field_name, old_value, new_value, source_file from docs_changes").fetchall(),
+                         [("given_names", "MEI LING", "MEI LIN", "a.jpg")])
+        self.assertNotIn("docs_changes", to_sql(rows, "sqlite", "docs"))  # 沒有修改就不建修改紀錄表
+        self.assertIn("INSERT IGNORE INTO `id_documents_changes`", to_sql(rows, "mysql", changes=changes))
+        self.assertIn("'2026-09-27 08:00:00.123'", to_sql(rows, "mysql", changes=changes))
+        self.assertIn("IF NOT EXISTS (SELECT 1 FROM [id_documents_changes]", to_sql(rows, "sqlserver", changes=changes))
 
 
 class TestSynthEndToEnd(unittest.TestCase):

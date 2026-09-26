@@ -24,7 +24,7 @@ from idpipe.mrz import check_digit, parse_mrz
 from idpipe.ocr import ocr_mrz_region
 from idpipe.pipeline import Components, Pipeline
 from idpipe.quality import check_photo
-from idpipe.sqlexport import DIALECTS, row_of, to_sql
+from idpipe.sqlexport import DIALECTS, change_rows, row_of, to_sql
 from idpipe.templates import SYNTH_LAYOUT
 from idpipe.viz import default_extractor, make_viz_extractor
 from run import rectify_details
@@ -152,11 +152,13 @@ def export_sql(payload: dict) -> dict:
     dialect, table = payload.get("dialect", "postgresql"), payload.get("table", "id_documents")
     if dialect not in DIALECTS:
         return {"error": f"不支援的資料庫：{dialect}"}
-    rows = [row_of(it["record"], it.get("source_file", ""), it.get("reviewed", False)) for it in payload.get("items", [])]
+    items = payload.get("items", [])
+    rows = [row_of(it["record"], it.get("source_file", ""), it.get("reviewed", False)) for it in items]
     if not rows:
         return {"error": "沒有勾選任何一筆"}
+    changes = [c for it in items for c in change_rows(it["record"], it.get("source_file", ""))]
     try:
-        return {"sql": to_sql(rows, dialect, table), "count": len(rows)}
+        return {"sql": to_sql(rows, dialect, table, changes), "count": len(rows), "changes": len(changes)}
     except ValueError as e:
         return {"error": str(e)}
 
