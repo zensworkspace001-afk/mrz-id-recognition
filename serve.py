@@ -174,6 +174,15 @@ def verify_text(text: str) -> dict:
     return {"mrz": mrz_summary(parse_mrz(lines))}
 
 
+def route(raw_path: str):
+    """回傳 (路徑, 查詢參數)。Vercel 把所有請求轉到 api/index.py 時，handler 看到的是改寫後的路徑，
+    原始路徑放在查詢參數 __route（見 vercel.json）；本機直接執行時沒有這個參數。"""
+    url = urlparse(raw_path)
+    query = parse_qs(url.query)
+    path = "/" + query.pop("__route")[0].lstrip("/") if "__route" in query else url.path
+    return path, query
+
+
 class Handler(BaseHTTPRequestHandler):
     def _send(self, code, body: bytes, ctype: str):
         self.send_response(code)
@@ -187,7 +196,7 @@ class Handler(BaseHTTPRequestHandler):
         self._send(code, json.dumps(obj, ensure_ascii=False).encode(), "application/json; charset=utf-8")
 
     def do_GET(self):
-        path = urlparse(self.path).path
+        path, _ = route(self.path)
         if path.startswith("/samples/"):
             name = path.rsplit("/", 1)[-1]
             f = SAMPLES / name
@@ -199,15 +208,15 @@ class Handler(BaseHTTPRequestHandler):
         self._send(200, INDEX.read_bytes(), "text/html; charset=utf-8")
 
     def do_POST(self):
-        url = urlparse(self.path)
-        endpoint = url.path.rstrip("/").rsplit("/", 1)[-1]  # /api/check；在 Vercel 上前面可能多了路由前綴
+        path, query = route(self.path)
+        endpoint = path.rstrip("/").rsplit("/", 1)[-1]  # /api/check -> check
         n = int(self.headers.get("Content-Length") or 0)
         if n > MAX_UPLOAD:
             return self._json({"error": "檔案超過 25 MB"}, 413)
         body = self.rfile.read(n)
         try:
             if endpoint == "recognize":
-                synth = parse_qs(url.query).get("synth", ["0"])[0] == "1"
+                synth = query.get("synth", ["0"])[0] == "1"
                 return self._json(recognize(body, synth))
             if endpoint == "check":
                 return self._json(check(body))
