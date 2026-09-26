@@ -2,7 +2,7 @@
   "functions": {
     "api/index.py": {
       "maxDuration": 300,
-      "includeFiles": "{serve.py,run.py,idpipe/**,web/**,tessdata/**}"
+      "includeFiles": "{serve.py,run.py,idpipe/**,web/**,tessdata/**,models/**}"
     }
   },
   "rewrites": [

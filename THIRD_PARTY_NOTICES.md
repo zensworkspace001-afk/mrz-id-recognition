@@ -19,6 +19,15 @@
 | pytesseract | 0.3.13 | Apache-2.0 | 呼叫 Tesseract | `pytesseract-LICENSE.txt` |
 | Pillow | 12.3.0 | MIT-CMU（HPND） | pytesseract 相依；合成資料繪圖 | `pillow-LICENSE.txt`（含下列內附函式庫全文） |
 | packaging | 26.3 | Apache-2.0 或 BSD-2-Clause | pytesseract 相依 | `packaging-LICENSE.*.txt` |
+| onnxruntime | 1.30.0 | MIT（內附元件見其 ThirdPartyNotices） | 視覺區 PP-OCR 模型推論 | `onnxruntime-LICENSE.txt`、`onnxruntime-ThirdPartyNotices.txt` |
+| protobuf | 7.36.2 | BSD-3-Clause | onnxruntime 相依 | `protobuf-LICENSE.txt` |
+| flatbuffers | 25.12.19 | Apache-2.0 | onnxruntime 相依 | `opencv-3rdparty-flatbuffers.txt`（同為 Apache-2.0 全文） |
+
+### PP-OCR 模型（`models/ppocr/`）
+
+PaddleOCR 的 PP-OCRv6 small 文字偵測與辨識模型（Apache-2.0，© PaddlePaddle Authors），ONNX 檔取自 RapidOCR 3.9.2 的發行檔（Apache-2.0）。
+`idpipe/ppocr.py` 依 RapidOCR 的預設參數重寫前後處理，**不安裝 rapidocr 套件**——它會連帶安裝 pip 版 `opencv-python`（含 GPL 的 FFmpeg）與 `shapely`（內含 LGPL 的 GEOS）。
+授權全文與出處：`ppocr-models-Apache-2.0.txt`（同一份也放在 `models/ppocr/LICENSE`）。
 
 Pillow 的 wheel 內附原生函式庫：libjpeg-turbo（IJG／BSD-3／Zlib）、libpng（libpng）、libtiff（libtiff）、libwebp（BSD-3）、zlib（Zlib）、FreeType（FTL，與 GPLv2 雙授權，**本專案選用 FTL**）、HarfBuzz（MIT）、Little CMS（MIT）、OpenJPEG（BSD-2）、Brotli（MIT）、liblzma（0BSD）、libavif（BSD-2）、libxcb／libXau（MIT），全文見 `pillow-LICENSE.txt`。
 
@@ -59,7 +68,7 @@ Homebrew 另外安裝的 cairo、pango、glib 等（LGPL）只供 Tesseract 的�
 
 - 本軟體部分功能基於 Independent JPEG Group 的成果（This software is based in part on the work of the Independent JPEG Group）。——libjpeg-turbo
 - Portions of this software are copyright © The FreeType Project (www.freetype.org). All rights reserved. ——Pillow 內附 FreeType
-- Apache-2.0 元件（OpenCV、Tesseract、pytesseract、KleidiCV、FlatBuffers、packaging）：附上授權全文；若該元件帶有 NOTICE 檔，須一併保留其內容。
+- Apache-2.0 元件（OpenCV、Tesseract、pytesseract、KleidiCV、FlatBuffers、packaging、PP-OCR 模型）：附上授權全文；若該元件帶有 NOTICE 檔，須一併保留其內容。
 
 ## 3. 刻意排除的元件
 
@@ -88,7 +97,7 @@ Vercel 無法安裝系統程式、也無法執行 `scripts/build_opencv.sh`，�
 | tesserocr | 2.11.0 | MIT（`tesserocr-LICENSE.txt`） | Linux wheel 內含 libtesseract 5.5.1（Apache-2.0）、Leptonica（BSD-2）、libjpeg／libpng／libtiff／libwebp（寬鬆授權），以及 **libjbig（jbigkit，GPL-2.0）** |
 | cysignals | 1.12.6 | **LGPL-3.0-or-later** | tesserocr 的相依套件 |
 | opencv-python-headless | 5.0.0.93 | Apache-2.0 | wheel 內含 FFmpeg，其中 **libx264／libx265／librubberband 為 GPL** |
-| numpy、pillow | 同上 | 同第 1 節 | |
+| numpy、pillow、onnxruntime（與 PP-OCR 模型） | 同上 | 同第 1 節 | |
 
 這些元件只在 Vercel 的伺服器上執行，使用者透過網頁使用服務、不會取得程式本身，**不構成散布**，GPL／LGPL 的散布義務不會觸發
 （GPL 與 LGPL 不含 AGPL 那種「透過網路提供服務也要公開原始碼」的條款）。

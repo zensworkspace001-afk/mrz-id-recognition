@@ -12,6 +12,7 @@
 - **整本打開、歪斜、旋轉都能讀**：先在照片中直接找 MRZ（2～3 行等寬字），再依 ICAO 9303 的字距（每字 2.54 mm）推算資料頁範圍並轉正；也會嘗試傳統的四角點偵測，兩者擇優。
 - **防偽底紋上的 MRZ**：實拍護照的波浪底紋會讓 Tesseract 把一長串 `<` 讀成 `KKKK…`。MRZ 是等寬字型，所以依字形逐格判斷 `<`、以動態規劃把 OCR 結果對齊到格子，再逐段重讀。
 - **不會把讀錯的判成成功**：姓名行沒有檢查碼，所以多種前處理逐字投票，各次讀法不一致就送複核；第二行依位置的字元類型分段重讀，只有通過的檢查碼變多才採用。
+- **台灣護照視覺區**：用 PP-OCR 讀整頁文字，再依欄位標籤（「出生日期／Date of birth」等）找正下方的值，不依賴固定座標，斜拍也讀得到。英文姓名、護照號碼、身分證字號、出生日期、到期日、性別都和 MRZ 交叉比對；發照日期以 5／10 年效期檢查；中文姓名無法用 MRZ 驗證，網頁會提示人工確認。
 - **上傳前先檢查照片能不能用**（約 0.5 秒）：找不到 MRZ、太模糊、反光、解析度不足就說明怎麼重拍。
 - **批次處理＋暫存區**：一次上傳多張，確認後勾選要入庫的筆數。
 - **匯出 SQL**：PostgreSQL／MySQL／SQL Server／SQLite。資料表不存在自動建立，已存在就寫入；同一張照片重複匯入會更新，不會重複新增。
@@ -38,7 +39,7 @@
 照片 ─→ 品質檢查 ─→ 拉正（四角點 或 MRZ 定位推算資料頁，0°/180° 以檢查碼決定）
      ─→ MRZ OCR（多種前處理 × 裁切範圍、字形校正、姓名逐字投票）
      ─→ 解析與檢查碼（TD3 / TD1、國家碼與身分證字號校驗）
-     ─→ 版型路由 ─→ 視覺區交叉比對（有標定版面時）─→ 是否需要人工複核
+     ─→ 版型路由 ─→ 視覺區讀取與交叉比對（台灣護照：PP-OCR＋欄位標籤）─→ 是否需要人工複核
      ─→ 暫存區 ─→ CSV / SQL
 ```
 
@@ -54,7 +55,7 @@ scripts/build_opencv.sh          # 編譯不含 FFmpeg 的精簡 OpenCV（原因
 其他指令：
 
 ```bash
-.venv/bin/python -m unittest discover -s tests                     # 測試（41 個）
+.venv/bin/python -m unittest discover -s tests                     # 測試（47 個）
 .venv/bin/python -m synth.make_dataset --n 50 --out data/synth      # 產生合成資料
 .venv/bin/python run.py data/synth/images --out out --synth-layout  # 批次辨識
 .venv/bin/python evaluate.py data/synth/annotations.jsonl out/records.jsonl
@@ -80,13 +81,14 @@ scripts/build_opencv.sh          # 編譯不含 FFmpeg 的精簡 OpenCV（原因
 | `idpipe/sqlexport.py` | SQL 匯出（四種資料庫） |
 | `idpipe/tess.py` | Tesseract 轉接層（pytesseract / tesserocr） |
 | `idpipe/templates.py`・`router.py`・`viz.py` | 版型、路由、視覺區抽取 |
+| `idpipe/ppocr.py`・`vizlabels.py`・`models/ppocr/` | PP-OCR 推論（只用 onnxruntime）、以欄位標籤讀視覺區 |
 | `synth/` | 合成資料產生器（捏造身分、SPECIMEN 浮水印、拍攝條件擴增） |
 | `serve.py`・`web/` | 驗證網站（本機）；`api/index.py` 為 Vercel 入口 |
 
 ## 限制與注意事項
 
 - 這套系統只**擷取資料**，不驗證證件真偽（不讀晶片、不檢查防偽特徵、不比對人臉），結果需保留人工複核。
-- 各國視覺區的欄位位置尚未用官方樣本標定，目前姓名只來自 MRZ。
+- 視覺區目前只有台灣護照啟用（實拍 4 張驗證）；其他國家的姓名只來自 MRZ，之後依各國標籤逐一加入。
 - 公開網站會把照片傳到雲端處理（只在記憶體中、不儲存）；真實證件屬於個人資料，請在本機或公司內部部署處理。
 - 本專案不含任何真實證件影像；`data/synth/` 與 `web/samples/` 全為合成資料。
 

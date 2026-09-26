@@ -67,7 +67,12 @@ TEMPLATES: dict[str, Template] = {
     "TWN-passport-current": Template(
         "TWN-passport-current", "passport", "TWN", "中華民國護照，含漢字姓名；個人號碼欄為國民身分證統一編號（依實拍樣本）",
         ["en", "ch"], "DD MMM YYYY", _f(*PASSPORT_COMMON, "name_native", "personal_number"),
-        {"native_name_script": "han", "native_excluded_from_matching": True, "personal_number_format": "taiwan_id"}),
+        {"native_name_script": "han", "native_excluded_from_matching": True, "personal_number_format": "taiwan_id",
+         # 視覺區以欄位標籤定位（vizlabels.py，不需量測位置）；標籤讀壞時改找唯一符合格式的一行
+         "viz": "labels",
+         "viz_formats": {"document_number": r"\d{9}", "personal_number": r"[A-Z][12]\d{8}"},
+         "viz_canonical": {"authority": "MINISTRY OF FOREIGN AFFAIRS"},
+         "validity_years": (5, 10)}),  # 未滿 14 歲 5 年、其餘 10 年
     "TWN-arc-current": Template(
         "TWN-arc-current", "arc", "TWN",
         "台灣居留證（ARC，卡片；含就業金卡）。背面為 TD1 三行 MRZ（依移民署樣張）："

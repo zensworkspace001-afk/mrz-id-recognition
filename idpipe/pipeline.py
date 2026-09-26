@@ -95,6 +95,9 @@ class Pipeline:
                 rec.fields[n]["confidence"] = 1.0 if mrz.checks.get(n, mrz.checksum_valid) else None
             for n in ("surname", "given_names"):  # 姓名行沒有檢查碼，信心未知
                 put(n, getattr(rec, n), "mrz")
+            if rec.personal_number:  # 以 MRZ 為準；視覺區讀到的只用來比對（否則會覆蓋 MRZ 的值）
+                put("personal_number", rec.personal_number, "mrz")
+                rec.fields["personal_number"]["confidence"] = 1.0 if mrz.checks.get("personal_number", True) else None
             if tpl and tpl.doc_type == "arc":
                 # 居留證 MRZ：證件號碼欄是護照號碼；統一證號在選用資料欄（只受總檢查碼保護）
                 rec.residence.valid_until = mrz.date_of_expiry
@@ -144,7 +147,7 @@ class Pipeline:
 
         # 與 MRZ 交叉比對（視覺區值 vs MRZ 值）
         if mrz:
-            for n in ("document_number", "date_of_birth", "date_of_expiry", "arc_number"):
+            for n in ("document_number", "personal_number", "date_of_birth", "date_of_expiry", "sex", "arc_number"):
                 f = rec.fields.get(n, {})
                 vv = f.get("viz_value")
                 if vv is None:
@@ -167,12 +170,27 @@ class Pipeline:
                     vv = rec.fields.get(n, {}).get("viz_value")
                     if vv is not None and not names_match(vv, getattr(rec, n), allow_prefix=truncated):
                         r.append(f"{n} 視覺區與 MRZ 不一致")
+                # 視覺區的姓與名都讀到、而且和 MRZ 一致：姓名已有獨立來源確認，MRZ 各次讀法的分歧不必再送複核
+                viz_names = [rec.fields.get(n, {}).get("viz_value") for n in ("surname", "given_names")]
+                if all(v is not None for v in viz_names) and not any("視覺區與 MRZ 不一致" in x and ("surname" in x or "given_names" in x) for x in r):
+                    r[:] = [x for x in r if x != "MRZ 姓名行各次辨識結果不一致"]
 
         # 低信心
         for n, f in rec.fields.items():
             c = f.get("confidence")
             if c is not None and c < self.conf_threshold:
                 r.append(f"{n} 信心低 ({c:.2f})")
+
+        # 發照日期（MRZ 沒有）：要早於到期日、晚於出生日；版型有規定效期年數時，到期日應為發照日加上該年數
+        issue = rec.fields.get("date_of_issue", {}).get("value")
+        if issue and rec.date_of_expiry:
+            years = tpl.rules.get("validity_years") if tpl else None
+            ok = rec.date_of_birth is None or issue >= rec.date_of_birth
+            ok = ok and issue < rec.date_of_expiry
+            if ok and years:
+                ok = any(_add_years(issue, y) == rec.date_of_expiry for y in years)
+            if not ok:
+                r.append("發照日期與出生日期或到期日不符" + (f"（效期應為 {'或'.join(map(str, years))} 年）" if years else ""))
 
         # 台灣居留證：ARC 號碼格式
         if tpl and tpl.key == "TWN-arc-current":
@@ -196,3 +214,12 @@ class Pipeline:
             r.append("版型未知")
         if tpl and not tpl.calibrated and not rec.fields:
             r.append("此版型尚未標定欄位位置，僅 MRZ 可用")
+
+
+def _add_years(iso_date: str, years: int) -> str:
+    """ISO 日期加上整數年（2 月 29 日遇到非閏年時取 2 月 28 日）。"""
+    y, m, d = map(int, iso_date.split("-"))
+    y += years
+    if m == 2 and d == 29 and not (y % 4 == 0 and (y % 100 != 0 or y % 400 == 0)):
+        d = 28
+    return f"{y:04d}-{m:02d}-{d:02d}"

@@ -255,8 +255,10 @@ function renderPhoto(r) {
   const tpl = rec.template_key === "unknown" ? "版型未知" : rec.template_key;
   const meta = [`${r.elapsed} 秒`, `${r.size[0]}×${r.size[1]}`, ({corners:"以四角點拉正", mrz:"以 MRZ 位置推算資料頁", whole:"找不到證件邊緣與 MRZ 位置（用整張圖）"})[r.method] || "", r.rotated ? "已轉 180°" : null, tpl].filter(Boolean).join("・");
   const nameChecked = ["surname", "given_names"].some(k => rec.fields[k] && "viz_value" in rec.fields[k]);
-  const caveat = r.mrz && !nameChecked
-    ? `<ul><li>姓名只來自 MRZ（姓名行沒有檢查碼），未經視覺區比對；請目視確認姓名與照片上一致。</li></ul>` : "";
+  const notes = [];
+  if (r.mrz && !nameChecked) notes.push("姓名只來自 MRZ（姓名行沒有檢查碼），未經視覺區比對；請目視確認姓名與照片上一致。");
+  if (rec.name_native) notes.push(`中文姓名「${esc(rec.name_native)}」只從視覺區讀取，無法用 MRZ 驗證（可能讀錯字），請目視確認。`);
+  const caveat = notes.length ? `<ul>${notes.map(n => `<li>${n}</li>`).join("")}</ul>` : "";
   const status = okAll
     ? `<div class="status ok"><span class="icon">✓</span><div><h2>辨識成功，免人工複核</h2><div class="meta">${esc(meta)}</div>${caveat}</div></div>`
     : `<div class="status review"><span class="icon">!</span><div><h2>需要人工複核（${rec.review_reasons.length} 項原因）</h2><div class="meta">${esc(meta)}</div>

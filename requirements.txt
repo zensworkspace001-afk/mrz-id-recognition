@@ -8,3 +8,4 @@ numpy==2.5.3
 opencv-python-headless==5.0.0.93
 tesserocr==2.11.0
 pillow==12.3.0
+onnxruntime==1.30.0

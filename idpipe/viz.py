@@ -111,3 +111,26 @@ def make_viz_extractor(layout: dict | None = None):
                 out[name] = {"raw": text, "confidence": conf, "bbox": box}
         return out
     return extract
+
+
+def default_extractor(rectified, tpl) -> dict:
+    """依版型選擇視覺區讀法：rules["viz"] == "labels" 用標籤定位（vizlabels.py，需要 onnxruntime），
+    否則用版型的 region（尚未標定時回傳空的結果，只用 MRZ）。"""
+    if tpl is None:
+        return {}
+    if tpl.rules.get("viz") == "labels":
+        try:
+            from .vizlabels import extract
+        except ImportError:  # 沒安裝 onnxruntime：只用 MRZ
+            return {}
+        out = extract(rectified, tpl.rules.get("viz_formats"))
+        for field, canonical in tpl.rules.get("viz_canonical", {}).items():
+            if field in out and _similar(out[field]["raw"], canonical) >= 0.85:
+                out[field]["raw"] = canonical  # 固定文字（例如發照機關）讀到空格、錯一兩個字時還原
+        return out
+    return make_viz_extractor()(rectified, tpl)
+
+
+def _similar(a: str, b: str) -> float:
+    import difflib
+    return difflib.SequenceMatcher(None, re.sub(r"\s+", "", a.upper()), re.sub(r"\s+", "", b.upper())).ratio()

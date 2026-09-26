@@ -26,7 +26,7 @@ from idpipe.pipeline import Components, Pipeline
 from idpipe.quality import check_photo
 from idpipe.sqlexport import DIALECTS, row_of, to_sql
 from idpipe.templates import SYNTH_LAYOUT
-from idpipe.viz import make_viz_extractor
+from idpipe.viz import default_extractor, make_viz_extractor
 from run import rectify_details
 
 INDEX = Path(__file__).with_name("web") / "index.html"
@@ -123,7 +123,7 @@ def recognize(data: bytes, synth_layout: bool) -> dict:
         ocr_texts.append(text)
         return text
 
-    comps = Components(rectify=rect, ocr_text=ocr)
+    comps = Components(rectify=rect, ocr_text=ocr, viz_extract=default_extractor)
     if synth_layout:
         comps.viz_extract = make_viz_extractor(SYNTH_LAYOUT)
     rec = Pipeline(comps).process(image, data, source="upload")

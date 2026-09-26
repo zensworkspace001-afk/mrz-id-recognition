@@ -20,7 +20,7 @@ from idpipe.pipeline import Components, Pipeline
 from idpipe.rectify import rectify
 from idpipe.storage import JsonlStorage, export_csv
 from idpipe.templates import SYNTH_LAYOUT
-from idpipe.viz import make_viz_extractor
+from idpipe.viz import default_extractor, make_viz_extractor
 
 EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
 
@@ -92,7 +92,7 @@ def main():
 
     out = Path(a.out)
     store = JsonlStorage(out / "records.jsonl")
-    comps = Components(rectify=auto_rectify, ocr_text=ocr_mrz_region)
+    comps = Components(rectify=auto_rectify, ocr_text=ocr_mrz_region, viz_extract=default_extractor)
     if a.synth_layout:
         comps.viz_extract = make_viz_extractor(SYNTH_LAYOUT)
     pipe = Pipeline(comps, store)

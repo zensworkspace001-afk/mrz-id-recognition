@@ -240,6 +240,74 @@ class TestChevron(unittest.TestCase):
         self.assertEqual([i for i, c in enumerate(fixed) if c == "<"], [i for i, c in enumerate(truth) if c == "<"])
 
 
+def _line(text, x0, y0, x1, y1, score=0.95):
+    import numpy as np
+    from idpipe.ppocr import TextLine
+    return TextLine(text, score, np.array([[x0, y0], [x1, y0], [x1, y1], [x0, y1]], np.float32))
+
+
+class TestVizLabels(unittest.TestCase):
+    """標籤定位解析（不需要模型）：文字行是依實拍台灣護照的 OCR 結果構造的，姓名與號碼為虛構。"""
+
+    def _page(self, sex=True):
+        L = [_line("中華民國REPUBLIC OF CHINA", 368, 114, 900, 134), _line("PASSPORT", 29, 148, 140, 166),
+             _line("通知人 (IN CASE OF EMERGENCY, NOTIFY THE INDIVIDUAL NAMED BELOW)", 100, 20, 900, 40),
+             _line("護照號碼 / Passport No.", 732, 208, 940, 224), _line("300000001", 737, 230, 900, 246),
+             _line("姓名/ Nme (Sairabe, Giveu mames)", 375, 260, 700, 276),
+             _line("王美華", 372, 288, 450, 306), _line("WANG, MEI-HUA", 520, 289, 700, 305),
+             _line("國籍/Nationality", 374, 330, 520, 345), _line("REPUBLIC OF CHINA", 376, 352, 600, 368),
+             _line("身分證统一編號 / Personal Id. No.", 740, 330, 1000, 346), _line("A123456789", 741, 354, 900, 370),
+             _line("性别/Sex", 373, 386, 460, 401),
+             _line("出生日期/Date of birth", 739, 386, 950, 401), _line("15 MAY 2003", 743, 411, 900, 427),
+             _line("發照日期/ Date of issuic", 376, 445, 600, 461), _line("01SEP2014", 379, 470, 520, 486),
+             _line("出生地 / Place of birth", 740, 443, 950, 458), _line("TAIWAN", 744, 469, 850, 485),
+             _line("效期截止日期/ Date of expiry", 374, 502, 640, 518), _line("01 SEP 2019", 377, 527, 520, 543),
+             _line("發照機關/Authority", 378, 561, 560, 577), _line("MINISTRYOF FOREIGN AFFAIRS", 375, 586, 780, 602)]
+        if sex:
+            L.append(_line("M", 378, 414, 392, 430))
+        return L
+
+    def _extract(self, lines):
+        from unittest import mock
+        from idpipe import vizlabels
+        with mock.patch.object(vizlabels, "engine", return_value=lambda img: lines):
+            import numpy as np
+            return vizlabels.extract(np.zeros((880, 1250, 3), np.uint8),
+                                     {"document_number": r"\d{9}", "personal_number": r"[A-Z][12]\d{8}"})
+
+    def test_fields_from_labels(self):
+        v = {k: x["raw"] for k, x in self._extract(self._page()).items()}
+        self.assertEqual((v["name_native"], v["surname"], v["given_names"]), ("王美華", "WANG", "MEI-HUA"))
+        self.assertEqual((v["document_number"], v["personal_number"], v["sex"]), ("300000001", "A123456789", "M"))
+        self.assertEqual((v["date_of_birth"], v["date_of_issue"], v["date_of_expiry"]), ("15 MAY 2003", "01 SEP 2014", "01 SEP 2019"))
+        self.assertEqual((v["place_of_birth"], v["nationality"]), ("TAIWAN", "REPUBLIC OF CHINA"))
+
+    def test_missing_value_does_not_steal_next_field(self):
+        v = self._extract(self._page(sex=False))
+        self.assertNotIn("sex", v)  # 性別的值沒偵測到時，不能抓到下方發照日期的值
+
+    def test_format_fallback_when_label_unreadable(self):
+        lines = [l for l in self._page() if "Personal" not in l.text]
+        self.assertEqual(self._extract(lines)["personal_number"]["raw"], "A123456789")
+
+    def test_ppocr_reads_rendered_text(self):
+        try:
+            import onnxruntime  # noqa: F401
+        except ImportError:
+            self.skipTest("onnxruntime 未安裝")
+        import numpy as np
+        from PIL import Image, ImageDraw, ImageFont
+        from synth.render import MONO
+        from idpipe.ppocr import engine
+        img = Image.new("RGB", (900, 200), (240, 238, 230))
+        d = ImageDraw.Draw(img)
+        d.text((40, 40), "MINISTRY OF FOREIGN AFFAIRS", fill=(20, 20, 20), font=ImageFont.truetype(MONO, 36))
+        d.text((40, 120), "15 MAY 2003", fill=(20, 20, 20), font=ImageFont.truetype(MONO, 36))
+        texts = [l.text.replace(" ", "") for l in engine()(np.array(img)[:, :, ::-1].copy())]
+        self.assertIn("MINISTRYOFFOREIGNAFFAIRS", texts)
+        self.assertIn("15MAY2003", texts)
+
+
 class TestLicense(unittest.TestCase):
     @unittest.skipIf(os.environ.get("IDPIPE_ALLOW_PIP_OPENCV") == "1",
                      "雲端部署（例如 Vercel）刻意使用 pip 的 opencv-python-headless：只在伺服器執行、不散布，見 THIRD_PARTY_NOTICES.md")
@@ -365,6 +433,21 @@ class TestPipeline(unittest.TestCase):
         l1, l2 = build_td3("TWN", "WANG", "HSIAO-MING", "300000001", "TWN", "900131", "M", "310130", "A123456788")
         rec = self._pipe(l1 + "\n" + l2).process(None, b"img12")
         self.assertIn("身分證統一編號格式或檢查碼不符", rec.review_reasons)
+
+    def test_taiwan_passport_viz_crosscheck(self):
+        l1, l2 = build_td3("TWN", "WANG", "MEI HUA", "300000001", "TWN", "030515", "F", "190901", "A223456781")
+        viz = {"surname": {"raw": "WANG", "confidence": 0.99}, "given_names": {"raw": "MEI-HUA", "confidence": 0.99},
+               "personal_number": {"raw": "A223456781", "confidence": 0.99},
+               "date_of_issue": {"raw": "01 SEP 2014", "confidence": 0.98}, "name_native": {"raw": "王美華", "confidence": 0.9}}
+        rec = self._pipe(l1 + "\n" + l2, viz).process(None, b"img13")
+        self.assertFalse(rec.needs_review, rec.review_reasons)
+        self.assertEqual((rec.personal_number, rec.name_native), ("A223456781", "王美華"))  # MRZ 為準，視覺區不覆蓋
+        viz["personal_number"]["raw"] = "A223456782"
+        viz["date_of_issue"]["raw"] = "02 SEP 2014"  # 台灣護照效期 5 或 10 年，差一天不合理
+        rec = self._pipe(l1 + "\n" + l2, viz).process(None, b"img14")
+        self.assertIn("personal_number 視覺區與 MRZ 不一致", rec.review_reasons)
+        self.assertTrue(any(x.startswith("發照日期與出生日期或到期日不符") for x in rec.review_reasons), rec.review_reasons)
+        self.assertEqual(rec.personal_number, "A223456781")
 
     def test_no_mrz_unknown(self):
         rec = self._pipe("nothing here").process(None, b"img4")

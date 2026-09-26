@@ -13,3 +13,4 @@ numpy==2.5.3
 pytesseract==0.3.13
 pillow==12.3.0
 packaging==26.3
+onnxruntime==1.30.0  # 視覺區 PP-OCR 推論（idpipe/ppocr.py）；會一併安裝 protobuf、flatbuffers
