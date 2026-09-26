@@ -183,6 +183,7 @@ pre.raw{font-family:var(--mono);font-size:12px;background:var(--sunk);border-rad
 
 <script>
 const $ = s => document.querySelector(s);
+const LOCAL = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const EX = {
   icao: "P<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<<<<<<<<<\nL898902C36UTO7408122F1204159ZE184226B<<<<<10",
@@ -370,25 +371,54 @@ function renderDetail() {
     out.innerHTML = title + q + `<div class="card"><div><span class="spinner"></span>${it.state === "checking" ? "檢查照片中…" : it.state === "recognizing" ? "辨識中（通常 3～15 秒）…" : "等待處理…"}</div></div>`;
   }
 }
-// 上傳前縮圖：雲端函式有請求大小上限（約 4.5 MB），手機原圖常超過；長邊 2400 像素對 MRZ 已足夠
-const MAX_SIDE = 2400, MAX_BYTES = 3.5 * 1024 * 1024;
-async function prepare(file) {
+// 上傳前縮圖：雲端函式的請求上限約 4.5 MB（超過會在進入程式前就被拒絕，瀏覽器常只看到「連線失敗」），
+// 手機原圖常超過；長邊 2400 像素對 MRZ 已足夠。
+const MAX_SIDE = 2400, MAX_BYTES = 3.5 * 1024 * 1024, UPLOAD_LIMIT = 4.4 * 1024 * 1024;
+async function decode(file) {
+  // 優先用 createImageBitmap（會依 EXIF 轉正）；不支援或解不開時改用 <img>（Safari 可解 HEIC）
+  try { return await createImageBitmap(file, {imageOrientation: "from-image"}); } catch (e) {}
+  const url = URL.createObjectURL(file);
   try {
-    const bmp = await createImageBitmap(file, {imageOrientation: "from-image"});
-    const scale = Math.min(1, MAX_SIDE / Math.max(bmp.width, bmp.height));
-    if (scale === 1 && file.size <= MAX_BYTES) { bmp.close?.(); return file; }
-    const c = document.createElement("canvas");
-    c.width = Math.round(bmp.width * scale); c.height = Math.round(bmp.height * scale);
-    c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
-    bmp.close?.();
-    return await new Promise(r => c.toBlob(r, "image/jpeg", 0.92));
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    return img;
   } catch (e) {
-    return file;  // 瀏覽器無法解碼（例如 HEIC）時原樣上傳，由伺服器回報錯誤
-  }
+    return null;
+  } finally { URL.revokeObjectURL(url); }
+}
+async function prepare(file) {
+  const src = await decode(file);
+  if (!src) return file;  // 瀏覽器解不開：原樣交給伺服器，由伺服器回報格式錯誤
+  const w = src.naturalWidth || src.width, h = src.naturalHeight || src.height;
+  const scale = Math.min(1, MAX_SIDE / Math.max(w, h));
+  if (scale === 1 && file.size <= MAX_BYTES && /jpe?g|png|webp/i.test(file.type)) { src.close?.(); return file; }
+  const c = document.createElement("canvas");
+  c.width = Math.round(w * scale); c.height = Math.round(h * scale);
+  c.getContext("2d").drawImage(src, 0, 0, c.width, c.height);
+  src.close?.();
+  return await new Promise(r => c.toBlob(b => r(b || file), "image/jpeg", 0.92));
+}
+function networkError(e) {
+  return LOCAL
+    ? `連不到本機伺服器，請確認 serve.py 還在執行。（${e.message}）`
+    : `上傳或連線失敗（${e.message}）。可能是網路中斷或照片太大，請重試；若持續發生，請改用較小的 JPG 照片。`;
 }
 async function post(url, file) {
-  const res = await fetch(url, {method:"POST", body:file, headers:{"Content-Type":"application/octet-stream"}});
-  if (!res.ok && res.status === 413) return {error: "照片太大，無法上傳。請先縮小照片再試。"};
+  if (!LOCAL && file.size > UPLOAD_LIMIT) {
+    return {error: `照片縮小後仍有 ${(file.size / 1024 / 1024).toFixed(1)} MB，超過線上版 4.4 MB 的上傳上限。` +
+      "瀏覽器可能無法讀取這個格式（例如 iPhone 的 HEIC），請先轉成 JPG 再上傳。"};
+  }
+  let res;
+  for (let attempt = 0; ; attempt++) {
+    try { res = await fetch(url, {method:"POST", body:file, headers:{"Content-Type":"application/octet-stream"}}); break; }
+    catch (e) {  // 連線層級的失敗（冷啟動、網路不穩）重試一次
+      if (attempt >= 1) return {error: networkError(e)};
+      await new Promise(r => setTimeout(r, 1500));
+    }
+  }
+  if (res.status === 413) return {error: "照片太大，超過伺服器的上傳上限。請先縮小照片或轉成 JPG 再試。"};
+  if (res.status === 504) return {error: "辨識逾時。請改用 MRZ 較清楚、解析度適中的照片再試。"};
   const text = await res.text();
   try { return JSON.parse(text); }
   catch (e) { return {error: `伺服器回應異常（HTTP ${res.status}）：${text.slice(0, 200)}`}; }
@@ -413,7 +443,7 @@ async function pump() {
           it.include = !it.result.error && !it.result.record.needs_review;
         }
       } catch (e) {
-        it.result = {error:`連不到本機伺服器，請確認 serve.py 還在執行。（${e.message}）`};
+        it.result = {error: networkError(e)};
         it.state = "done";
       }
       renderQueue(); if (selected === it.id) renderDetail();
@@ -486,11 +516,10 @@ $("#exportSql").addEventListener("click", async () => {
     download(new Blob([r.sql], {type:"application/sql;charset=utf-8"}), `${table}_${dialect}_${stamp()}.sql`);
     $("#exportHint").textContent = `已匯出 ${r.count} 筆（${$("#dialect").selectedOptions[0].text}）`;
   } catch (e) {
-    $("#exportHint").textContent = `連不到本機伺服器（${e.message}）`;
+    $("#exportHint").textContent = networkError(e);
   }
 });
 // ---- 本機 / 公開網站 ----
-const LOCAL = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
 if (!LOCAL) {
   $("#cloudBanner").hidden = false;
   $("#subtitle").textContent = "上傳護照或居留證照片，檢查這套流程能不能讀對。照片在雲端伺服器的記憶體中處理，不會儲存。";
@@ -528,7 +557,7 @@ async function verify() {
     const r = await res.json();
     out.innerHTML = r.error ? `<div class="status err"><span class="icon">✗</span><div><h2>格式不對</h2><div class="meta">${esc(r.error)}</div></div></div>` : mrzSection(r.mrz);
   } catch (e) {
-    out.innerHTML = `<div class="status err"><span class="icon">✗</span><div><h2>連不到本機伺服器</h2><div class="meta">請確認 serve.py 還在執行。</div></div></div>`;
+    out.innerHTML = `<div class="status err"><span class="icon">✗</span><div><h2>連線失敗</h2><div class="meta">${esc(networkError(e))}</div></div></div>`;
   }
 }
 $("#verify").addEventListener("click", verify);
