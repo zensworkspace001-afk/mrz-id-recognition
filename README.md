@@ -61,7 +61,7 @@ scripts/build_opencv.sh          # 編譯不含 FFmpeg 的精簡 OpenCV（原因
 
 ## 部署到 Vercel
 
-在 Vercel 匯入這個 repo 即可，設定都在 `vercel.json`：所有路徑轉到 `api/index.py`（沿用 `serve.py` 的處理邏輯），
+已連結 GitHub：推送到 `main` 會自動部署到正式網站，其他分支會產生預覽網址。自行部署時，在 Vercel 匯入這個 repo 即可，設定都在 `vercel.json`：所有路徑轉到 `api/index.py`（沿用 `serve.py` 的處理邏輯），
 相依套件用 `requirements.txt`。雲端無法安裝 `tesseract` 指令，所以改用內含 Tesseract 引擎的 `tesserocr`
 （`idpipe/tess.py` 自動切換；兩種方式在 80 張合成資料上的結果完全相同），英文模型放在 `tessdata/`。
 瀏覽器上傳前會把照片縮到長邊 2400 像素，避開雲端函式的請求大小上限。
