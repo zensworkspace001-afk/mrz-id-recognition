@@ -1,0 +1,25 @@
+# 本機環境與編譯產物
+.venv/
+__pycache__/
+*.pyc
+build/
+
+# 執行結果（可由 run.py 重新產生；可能含個人資料）
+out/
+out_*/
+*.jsonl
+*.csv
+*.sql
+*.db
+
+# 真實證件照片一律不進版控：請放在 private/ 或 repo 以外的地方
+private/
+real/
+*.heic
+*.HEIC
+
+# 合成資料的標注檔例外（不含真實個資）
+!data/synth/annotations.jsonl
+
+.DS_Store
+.vercel/

@@ -1,0 +1,11 @@
+.venv/
+data/
+out/
+out_*/
+tests/
+licenses/
+scripts/
+synth/
+build/
+*.md
+!README.md

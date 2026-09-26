@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>證件辨識驗證</title>
+<style>
+:root{
+  color-scheme:light;
+  --page:#f2f4f5; --surface:#ffffff; --sunk:#e9eef0; --line:#dde3e6;
+  --ink:#10181c; --ink-2:#4d5a60; --muted:#7c888d;
+  --accent:#1f6fd1; --accent-wash:rgba(31,111,209,.10);
+  --good:#0a8f3a; --good-wash:rgba(10,143,58,.12);
+  --bad:#c73434; --bad-wash:rgba(199,52,52,.13);
+  --warn:#a86a00; --warn-wash:rgba(232,160,20,.16);
+  --sans:system-ui,-apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei","Segoe UI",sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    color-scheme:dark;
+    --page:#0e1214; --surface:#171d20; --sunk:#20282c; --line:#2b3438;
+    --ink:#eef3f5; --ink-2:#b4c0c5; --muted:#86939a;
+    --accent:#5a9cf0; --accent-wash:rgba(90,156,240,.16);
+    --good:#3cc56b; --good-wash:rgba(60,197,107,.16);
+    --bad:#f07070; --bad-wash:rgba(240,112,112,.18);
+    --warn:#f0b44a; --warn-wash:rgba(240,180,74,.16);
+  }
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--page);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.55}
+.wrap{max-width:1120px;margin:0 auto;padding-inline:16px;padding-block:28px 64px;display:flex;flex-direction:column;gap:18px}
+h1{font-size:22px;margin:0}
+h2{font-size:15px;margin:0}
+.sub{margin:4px 0 0;color:var(--ink-2)}
+.tabs{display:inline-flex;gap:2px;background:var(--sunk);padding:3px;border-radius:9px;align-self:flex-start}
+.tabs button{font:inherit;border:0;background:transparent;color:var(--ink-2);padding:6px 14px;border-radius:7px;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:0 0 0 1px var(--line)}
+button:focus-visible,textarea:focus-visible,input:focus-visible,summary:focus-visible,.drop:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.drop{border:2px dashed var(--line);border-radius:12px;padding:28px 16px;text-align:center;color:var(--ink-2);cursor:pointer;background:var(--surface);display:flex;flex-direction:column;gap:6px;align-items:center}
+.drop.over{border-color:var(--accent);background:var(--accent-wash)}
+.drop strong{color:var(--ink);font-size:15px}
+.drop input{position:absolute;width:1px;height:1px;opacity:0}
+.row{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.opt{display:inline-flex;gap:6px;align-items:center;color:var(--ink-2);font-size:13px}
+.hint{color:var(--muted);font-size:12.5px;margin:0}
+.btn{font:inherit;border:0;border-radius:8px;padding:8px 16px;background:var(--accent);color:#fff;font-weight:600;cursor:pointer}
+.btn.ghost{background:var(--sunk);color:var(--ink);font-weight:500}
+.btn:disabled{opacity:.55;cursor:default}
+.banner{border-radius:12px;padding:12px 16px;background:var(--warn-wash);color:var(--ink);font-size:13.5px}
+.banner b{color:var(--warn)}
+.samples{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.status{display:flex;gap:12px;align-items:flex-start;border-radius:12px;padding:14px 16px}
+.status.ok{background:var(--good-wash)} .status.review{background:var(--warn-wash)} .status.err{background:var(--bad-wash)}
+.status .icon{font-size:20px;line-height:1.2;font-weight:700}
+.status.ok .icon{color:var(--good)} .status.review .icon{color:var(--warn)} .status.err .icon{color:var(--bad)}
+.status h2{font-size:16px}
+.status ul{margin:6px 0 0;padding-left:18px;color:var(--ink-2)}
+.status .meta{color:var(--ink-2);font-size:12.5px;margin-top:2px}
+.imgs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+figure{margin:0;display:flex;flex-direction:column;gap:6px}
+figure img{width:100%;border-radius:8px;display:block;background:var(--sunk)}
+figcaption{font-size:12.5px;color:var(--ink-2)}
+.mrz{font-family:var(--mono);font-size:15px;letter-spacing:.06em;background:var(--sunk);border-radius:8px;padding:12px 14px;overflow-x:auto;white-space:pre;line-height:1.9}
+.mrz .cd{border-radius:3px;padding:0 1px;font-weight:700}
+.mrz .cd.ok{background:var(--good-wash);color:var(--good)}
+.mrz .cd.bad{background:var(--bad-wash);color:var(--bad)}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--ink-2)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:500;font-size:12px}
+td.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.pill{display:inline-block;font-size:11.5px;border-radius:999px;padding:1px 8px;background:var(--sunk);color:var(--ink-2);white-space:nowrap}
+.pill.ok{background:var(--good-wash);color:var(--good)} .pill.bad{background:var(--bad-wash);color:var(--bad)}
+.pill.warn{background:var(--warn-wash);color:var(--warn)}
+textarea{width:100%;min-height:118px;font-family:var(--mono);font-size:14px;letter-spacing:.04em;border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--surface);color:var(--ink);resize:vertical}
+details{border-top:1px solid var(--line);padding-top:10px}
+summary{cursor:pointer;color:var(--ink-2);font-size:13px}
+pre.raw{font-family:var(--mono);font-size:12px;background:var(--sunk);border-radius:8px;padding:10px;overflow:auto;max-height:340px;margin:8px 0 0}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;vertical-align:-3px;margin-right:8px}
+@media (prefers-reduced-motion:no-preference){.spinner{animation:spin .8s linear infinite}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between}
+.counts{display:flex;flex-wrap:wrap;gap:6px}
+.queue tbody tr{cursor:pointer}
+.queue tbody tr:hover{background:var(--accent-wash)}
+.queue tbody tr[aria-selected="true"]{background:var(--accent-wash);box-shadow:inset 3px 0 0 var(--accent)}
+.queue td{vertical-align:middle}
+.queue img.thumb{width:56px;height:40px;object-fit:cover;border-radius:4px;display:block;background:var(--sunk)}
+.queue .fname{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.btn.small{padding:4px 10px;font-size:12.5px}
+.exportbar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;border-top:1px solid var(--line);padding-top:12px}
+.exportbar select,.exportbar input[type=text]{font:inherit;font-size:13px;border:1px solid var(--line);border-radius:7px;padding:5px 8px;background:var(--surface);color:var(--ink)}
+.exportbar input[type=text]{width:150px;font-family:var(--mono)}
+.queue input[type=checkbox]{width:16px;height:16px}
+.confirmed{font-size:11px;color:var(--good);display:block}
+.qlist{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.qlist li{display:flex;gap:10px;align-items:baseline}
+.qlist .ic{width:18px;flex:none;font-weight:700;text-align:center}
+.qlist .ok .ic{color:var(--good)} .qlist .warn .ic{color:var(--warn)} .qlist .fail .ic{color:var(--bad)}
+.qlist b{font-weight:600;min-width:64px;display:inline-block}
+@media (max-width:760px){.imgs,.grid2{grid-template-columns:minmax(0,1fr)}.queue .fname{max-width:120px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>證件辨識驗證</h1>
+    <p class="sub" id="subtitle">上傳護照或居留證照片，檢查這套流程能不能讀對。只在這台電腦上處理，照片不會存檔。</p>
+  </header>
+  <div class="banner" id="cloudBanner" hidden>
+    <b>展示用網站，請勿上傳真實證件。</b>照片會傳到雲端伺服器處理（只在記憶體中、不儲存），但仍屬於把個資交給第三方。
+    請用下方的合成範例圖試用；真實證件請在本機或公司內部部署的版本處理。
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button role="tab" id="tab-photo" aria-selected="true" aria-controls="panel-photo">照片辨識</button>
+    <button role="tab" id="tab-text" aria-selected="false" aria-controls="panel-text">手動輸入 MRZ</button>
+  </div>
+
+  <section id="panel-photo" role="tabpanel" aria-labelledby="tab-photo" class="card">
+    <label class="drop" id="drop">
+      <strong>拖曳照片到這裡，或點一下選擇檔案（可一次選多張）</strong>
+      <span>JPG、PNG、WebP；護照拍資料頁，居留證拍背面（有三行 MRZ 的那面）</span>
+      <input type="file" id="file" multiple accept="image/jpeg,image/png,image/webp,image/bmp">
+    </label>
+    <div class="samples" id="samples" hidden>
+      <span class="hint">試用合成範例：</span>
+    </div>
+    <div class="row">
+      <label class="opt"><input type="checkbox" id="synth"> 用合成版面抽取視覺區（只適用 synth/ 產生的圖）</label>
+    </div>
+    <p class="hint">每張照片會先檢查能不能用（約 1 秒），再辨識（約 3～15 秒）。拍攝建議：MRZ（底部兩三行英數字）清楚、不反光；證件可以歪斜或旋轉，護照可以整本打開拍。</p>
+    <div id="batch" hidden>
+      <div class="toolbar">
+        <div><h2>暫存區</h2></div>
+        <div class="counts" id="counts" aria-live="polite"></div>
+        <button class="btn ghost small" id="clearAll">清除全部</button>
+      </div>
+      <div class="tbl"><table class="queue">
+        <thead><tr><th title="勾選的會匯出">匯出</th><th></th><th>檔名</th><th>照片檢查</th><th>辨識結果</th><th>姓名</th><th>證件號碼</th><th></th></tr></thead>
+        <tbody id="queueBody"></tbody>
+      </table></div>
+      <p class="hint">免複核的預設勾選；需複核的請看過詳細結果、確認無誤後再勾選（會記為已人工確認）。建議重拍與失敗的不能匯出。</p>
+      <div class="exportbar">
+        <label for="dialect">資料庫</label>
+        <select id="dialect">
+          <option value="postgresql">PostgreSQL</option>
+          <option value="mysql">MySQL</option>
+          <option value="sqlserver">SQL Server</option>
+          <option value="sqlite">SQLite</option>
+        </select>
+        <label for="tableName">資料表</label>
+        <input type="text" id="tableName" value="id_documents" spellcheck="false" autocomplete="off">
+        <button class="btn small" id="exportSql" disabled>匯出 SQL</button>
+        <button class="btn ghost small" id="exportCsv" disabled>匯出 CSV</button>
+        <span class="hint" id="exportHint"></span>
+      </div>
+      <p class="hint">SQL 檔要用查詢工具執行：pgAdmin 請用 <b>Query Tool</b> 開啟檔案後按執行（F5），<b>不要用 Restore</b>（Restore 只接受 pg_dump 備份檔）；MySQL 用 Workbench 或 <code>mysql &lt; 檔案</code>；SQL Server 用 SSMS。資料表不存在會自動建立，已存在就直接寫入；同一張照片重複匯入會更新，不會重複新增。結果只保留在這個瀏覽器分頁，重新整理就會清除；匯出的檔案含個人資料，請妥善保管。</p>
+    </div>
+  </section>
+
+  <section id="panel-text" role="tabpanel" aria-labelledby="tab-text" class="card" hidden>
+    <label for="mrzText"><h2>貼上 MRZ</h2></label>
+    <textarea id="mrzText" spellcheck="false" autocomplete="off" placeholder="護照 2 行 × 44 字元，或卡片 3 行 × 30 字元（空白會自動略過）"></textarea>
+    <div class="row">
+      <button class="btn" id="verify">驗證檢查碼</button>
+      <span class="hint">範例：</span>
+      <button class="btn ghost" data-ex="icao">ICAO 護照樣本</button>
+      <button class="btn ghost" data-ex="gold">就業金卡樣張</button>
+      <button class="btn ghost" data-ex="arc">居留證樣張</button>
+    </div>
+    <p class="hint">會顯示每個檢查碼「印的」和「依資料算出應為」的值。兩張移民署樣張的總檢查碼都與 ICAO 公式不符（居留證樣張印 8、算得 3），請用真實卡片確認。</p>
+  </section>
+
+  <div id="result" aria-live="polite"></div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const EX = {
+  icao: "P<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<<<<<<<<<\nL898902C36UTO7408122F1204159ZE184226B<<<<<10",
+  gold: "I<TWN12345678<84YZ000000080983\n9001011F2101314JPN0072<<<<<<<0\nLIN<MAY<LEE<<<<<<<<<<<<<<<<<<<",
+  arc:  "I<TWNP2000050170A9000000160100\n0005016F2105013<<<0152<<<<<<<8\nTHIRTY<DAYS<<<<<<<<<<<<<<<<<<<",
+};
+const FIELD = {surname:"姓", given_names:"名", nationality:"國籍", sex:"性別", date_of_birth:"出生日期",
+  document_number:"證件號碼", date_of_expiry:"到期日", date_of_issue:"簽發日", place_of_birth:"出生地",
+  authority:"簽發機關", personal_number:"個人號碼", arc_number:"統一證號", name_native:"原文姓名",
+  valid_from:"居留起日", valid_until:"居留期限", employer:"雇主", purpose:"居留事由", middle_name:"中間名"};
+const SRC = {mrz:"MRZ", viz:"視覺區", "mrz+viz":"MRZ＋視覺區"};
+
+// ---- tabs ----
+for (const t of document.querySelectorAll('[role="tab"]')) {
+  t.addEventListener("click", () => {
+    for (const o of document.querySelectorAll('[role="tab"]')) {
+      o.setAttribute("aria-selected", String(o === t));
+      document.getElementById(o.getAttribute("aria-controls")).hidden = o !== t;
+    }
+    $("#result").innerHTML = "";
+    if (t.id === "tab-photo") renderDetail();
+  });
+}
+
+// ---- MRZ rendering ----
+function mrzBlock(m) {
+  const marks = {};
+  for (const c of m.checks) marks[`${c.line}:${c.pos}`] = c;
+  const html = m.lines.map((l, li) => [...l].map((ch, i) => {
+    const c = marks[`${li}:${i}`];
+    if (!c) return esc(ch);
+    const t = `${c.label}：印 ${c.printed}，應為 ${c.expected}`;
+    return `<span class="cd ${c.ok ? "ok" : "bad"}" title="${esc(t)}">${esc(ch)}</span>`;
+  }).join("")).join("\n");
+  return `<div class="mrz" role="img" aria-label="MRZ">${html}</div>
+    <div class="legend"><span><i style="background:var(--good-wash);outline:1px solid var(--good)"></i>檢查碼通過</span>
+    <span><i style="background:var(--bad-wash);outline:1px solid var(--bad)"></i>檢查碼不符（滑鼠移上去看應為多少）</span></div>`;
+}
+function checksTable(m) {
+  const rows = m.checks.map(c => `<tr><td>${esc(c.label)}</td><td class="mono">${esc(c.printed)}</td><td class="mono">${esc(c.expected)}</td>
+    <td>${c.ok ? '<span class="pill ok">✓ 通過</span>' : '<span class="pill bad">✗ 不符</span>'}</td></tr>`).join("");
+  return `<div class="tbl"><table><thead><tr><th>檢查碼</th><th>印的</th><th>應為</th><th>結果</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+function parsedTable(m) {
+  const rows = Object.entries(m.parsed).map(([k, v]) => `<tr><td>${esc(k)}</td><td class="mono">${esc(v) || "—"}</td></tr>`).join("");
+  return `<div class="tbl"><table><thead><tr><th>MRZ 欄位</th><th>值</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+function mrzSection(m) {
+  const fmt = m.format === "TD1" ? "TD1（卡片，3 × 30）" : "TD3（護照，2 × 44）";
+  return `<section class="card"><div class="row" style="justify-content:space-between"><h2>MRZ・${fmt}</h2>
+      ${m.checksum_valid ? '<span class="pill ok">✓ 檢查碼全部通過</span>' : '<span class="pill bad">✗ 有檢查碼不符</span>'}</div>
+    ${mrzBlock(m)}<div class="grid2">${checksTable(m)}${parsedTable(m)}</div></section>`;
+}
+
+// ---- photo recognition ----
+function fieldsTable(rec) {
+  const rows = Object.entries(rec.fields).map(([k, f]) => {
+    const c = f.confidence, vc = f.viz_confidence;
+    const conf = c == null ? "—" : `<span class="pill ${c < .8 ? "warn" : ""}">${c.toFixed(2)}</span>`;
+    const viz = "viz_value" in f ? `${esc(f.viz_value) || "（無法解析）"} <span class="pill ${vc != null && vc < .8 ? "warn" : ""}">${vc == null ? "—" : vc.toFixed(2)}</span>` : "—";
+    return `<tr><td>${esc(FIELD[k] || k)}</td><td class="mono">${esc(f.value) || "—"}</td><td>${esc(SRC[f.source] || f.source)}</td><td>${conf}</td><td class="mono">${viz}</td></tr>`;
+  }).join("");
+  return rows ? `<div class="tbl"><table><thead><tr><th>欄位</th><th>輸出值</th><th>來源</th><th>信心</th><th>視覺區讀值・信心</th></tr></thead><tbody>${rows}</tbody></table></div>`
+              : `<p class="hint">沒有讀到任何欄位。</p>`;
+}
+function renderPhoto(r) {
+  if (r.error) return `<div class="status err"><span class="icon">✗</span><div><h2>無法處理</h2><div class="meta">${esc(r.error)}</div></div></div>`;
+  const rec = r.record, okAll = !rec.needs_review;
+  const tpl = rec.template_key === "unknown" ? "版型未知" : rec.template_key;
+  const meta = [`${r.elapsed} 秒`, `${r.size[0]}×${r.size[1]}`, ({corners:"以四角點拉正", mrz:"以 MRZ 位置推算資料頁", whole:"找不到證件邊緣與 MRZ 位置（用整張圖）"})[r.method] || "", r.rotated ? "已轉 180°" : null, tpl].filter(Boolean).join("・");
+  const nameChecked = ["surname", "given_names"].some(k => rec.fields[k] && "viz_value" in rec.fields[k]);
+  const caveat = r.mrz && !nameChecked
+    ? `<ul><li>姓名只來自 MRZ（姓名行沒有檢查碼），未經視覺區比對；請目視確認姓名與照片上一致。</li></ul>` : "";
+  const status = okAll
+    ? `<div class="status ok"><span class="icon">✓</span><div><h2>辨識成功，免人工複核</h2><div class="meta">${esc(meta)}</div>${caveat}</div></div>`
+    : `<div class="status review"><span class="icon">!</span><div><h2>需要人工複核（${rec.review_reasons.length} 項原因）</h2><div class="meta">${esc(meta)}</div>
+        <ul>${rec.review_reasons.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div></div>`;
+  const res = rec.residence || {};
+  const resRows = Object.entries(res).filter(([, v]) => v).map(([k, v]) => `<tr><td>${esc(FIELD[k] || k)}</td><td class="mono">${esc(v)}</td></tr>`).join("");
+  return `${status}
+    <section class="card"><h2>影像</h2><div class="imgs">
+      <figure><img src="${r.original}" alt="上傳的照片，綠框為偵測到的證件四角"><figcaption>上傳照片（綠框：拉正用的資料頁範圍）</figcaption></figure>
+      ${r.rectified ? `<figure><img src="${r.rectified}" alt="拉正後的影像"><figcaption>拉正後（OCR 用這張）</figcaption></figure>` : ""}
+    </div></section>
+    ${r.mrz ? mrzSection(r.mrz) : `<section class="card"><h2>MRZ</h2><p class="hint">沒有找到 MRZ。請確認 MRZ 在畫面下方、沒有反光遮住，或到「手動輸入 MRZ」直接驗證文字。</p></section>`}
+    <section class="card"><h2>輸出欄位</h2>${fieldsTable(rec)}
+      ${resRows ? `<h2>居留資訊</h2><div class="tbl"><table><tbody>${resRows}</tbody></table></div>` : ""}
+      <details><summary>MRZ 區域的原始 OCR 文字</summary><pre class="raw">${esc(r.ocr_text) || "（空白）"}</pre></details>
+      <details><summary>完整輸出 JSON</summary><pre class="raw">${esc(JSON.stringify(rec, null, 2))}</pre></details>
+    </section>`;
+}
+function qualitySection(c, withPreview) {
+  const icon = {ok:"✓", warn:"!", fail:"✗"};
+  const items = c.checks.map(x => `<li class="${x.status}"><span class="ic">${icon[x.status]}</span><span><b>${esc(x.label)}</b>${esc(x.message)}</span></li>`).join("");
+  const head = c.usable
+    ? (c.checks.some(x => x.status === "warn") ? '<span class="pill warn">! 可用，但有提醒</span>' : '<span class="pill ok">✓ 照片可用</span>')
+    : '<span class="pill bad">✗ 建議重拍</span>';
+  return `<section class="card"><div class="row" style="justify-content:space-between"><h2>照片檢查</h2>${head}</div>
+    <ul class="qlist">${items}</ul>
+    ${withPreview && c.preview ? `<figure><img src="${c.preview}" alt="上傳的照片，藍框為找到的 MRZ"><figcaption>藍框：找到的 MRZ 位置</figcaption></figure>` : ""}
+  </section>`;
+}
+
+// ---- batch queue ----
+const items = [];
+let seq = 0, running = false, selected = null;
+const STATE = {
+  queued: '<span class="pill">等待中</span>',
+  checking: '<span class="pill"><span class="spinner"></span>檢查中</span>',
+  recognizing: '<span class="pill"><span class="spinner"></span>辨識中</span>',
+};
+function checkPill(it) {
+  if (!it.check) return it.state === "checking" ? STATE.checking : '<span class="pill">—</span>';
+  if (it.check.error) return '<span class="pill bad">✗ 無法讀取</span>';
+  if (!it.check.usable) return '<span class="pill bad">✗ 建議重拍</span>';
+  return it.check.checks.some(x => x.status === "warn") ? '<span class="pill warn">! 有提醒</span>' : '<span class="pill ok">✓ 可用</span>';
+}
+function resultPill(it) {
+  if (it.state === "queued") return STATE.queued;
+  if (it.state === "checking") return '<span class="pill">—</span>';
+  if (it.state === "recognizing") return STATE.recognizing;
+  if (it.state === "unusable") return '<span class="pill">未辨識</span>';
+  const r = it.result;
+  if (!r || r.error) return '<span class="pill bad">✗ 失敗</span>';
+  return r.record.needs_review ? '<span class="pill warn">! 需複核</span>' : '<span class="pill ok">✓ 免複核</span>';
+}
+function outcome(it) {
+  if (it.state === "unusable" || (it.check && it.check.error)) return "unusable";
+  if (it.state !== "done") return "pending";
+  if (!it.result || it.result.error) return "failed";
+  return it.result.record.needs_review ? "review" : "ok";
+}
+function canExport(it) {
+  return ["ok", "review"].includes(outcome(it));
+}
+function renderExportBar() {
+  const pending = items.filter(it => outcome(it) === "pending").length;
+  const chosen = items.filter(it => canExport(it) && it.include).length;
+  $("#exportSql").disabled = $("#exportCsv").disabled = pending > 0 || chosen === 0;
+  $("#exportHint").textContent = pending ? `還有 ${pending} 張處理中，全部完成後才能匯出` : `已勾選 ${chosen} 筆`;
+}
+function renderQueue() {
+  $("#batch").hidden = items.length === 0;
+  renderExportBar();
+  const n = k => items.filter(it => outcome(it) === k).length;
+  const pending = n("pending");
+  $("#counts").innerHTML = [
+    `<span class="pill">共 ${items.length} 張</span>`,
+    pending ? `<span class="pill"><span class="spinner"></span>處理中 ${pending}</span>` : "",
+    `<span class="pill ok">✓ 免複核 ${n("ok")}</span>`,
+    `<span class="pill warn">! 需複核 ${n("review")}</span>`,
+    `<span class="pill bad">✗ 建議重拍 ${n("unusable")}</span>`,
+    n("failed") ? `<span class="pill bad">✗ 失敗 ${n("failed")}</span>` : "",
+  ].join("");
+  $("#queueBody").innerHTML = items.map(it => {
+    const rec = it.result && it.result.record;
+    const name = rec ? [rec.surname, rec.given_names].filter(Boolean).join(", ") : "";
+    const doc = rec ? (rec.document_number || rec.residence?.arc_number || "") : "";
+    const force = it.state === "unusable" && it.check && !it.check.error
+      ? `<button class="btn ghost small" data-force="${it.id}">仍要辨識</button>` : "";
+    const exportable = canExport(it);
+    const box = exportable
+      ? `<input type="checkbox" data-include="${it.id}" ${it.include ? "checked" : ""} aria-label="匯出 ${esc(it.name)}">${it.include && outcome(it) === "review" ? '<span class="confirmed">已確認</span>' : ""}`
+      : "";
+    return `<tr data-id="${it.id}" aria-selected="${selected === it.id}" tabindex="0">
+      <td>${box}</td>
+      <td><img class="thumb" src="${it.thumb}" alt=""></td>
+      <td class="fname" title="${esc(it.name)}">${esc(it.name)}</td>
+      <td>${checkPill(it)}</td><td>${resultPill(it)}</td>
+      <td class="mono">${esc(name) || "—"}</td><td class="mono">${esc(doc) || "—"}</td><td>${force}</td></tr>`;
+  }).join("");
+}
+function renderDetail() {
+  const it = items.find(x => x.id === selected);
+  const out = $("#result");
+  if (!it) { out.innerHTML = ""; return; }
+  const title = `<div class="row" style="justify-content:space-between"><h2>${esc(it.name)}</h2></div>`;
+  if (it.check && it.check.error) { out.innerHTML = title + renderPhoto({error: it.check.error}); return; }
+  const q = it.check ? qualitySection(it.check, !it.result) : "";
+  if (it.state === "unusable") {
+    out.innerHTML = title + q + `<div class="row"><button class="btn" data-force="${it.id}">仍要辨識這張</button><span class="hint">照片檢查未通過，辨識結果可能不正確。</span></div>`;
+  } else if (it.result) {
+    out.innerHTML = title + renderPhoto(it.result) + q;
+  } else {
+    out.innerHTML = title + q + `<div class="card"><div><span class="spinner"></span>${it.state === "checking" ? "檢查照片中…" : it.state === "recognizing" ? "辨識中（通常 3～15 秒）…" : "等待處理…"}</div></div>`;
+  }
+}
+// 上傳前縮圖：雲端函式有請求大小上限（約 4.5 MB），手機原圖常超過；長邊 2400 像素對 MRZ 已足夠
+const MAX_SIDE = 2400, MAX_BYTES = 3.5 * 1024 * 1024;
+async function prepare(file) {
+  try {
+    const bmp = await createImageBitmap(file, {imageOrientation: "from-image"});
+    const scale = Math.min(1, MAX_SIDE / Math.max(bmp.width, bmp.height));
+    if (scale === 1 && file.size <= MAX_BYTES) { bmp.close?.(); return file; }
+    const c = document.createElement("canvas");
+    c.width = Math.round(bmp.width * scale); c.height = Math.round(bmp.height * scale);
+    c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+    bmp.close?.();
+    return await new Promise(r => c.toBlob(r, "image/jpeg", 0.92));
+  } catch (e) {
+    return file;  // 瀏覽器無法解碼（例如 HEIC）時原樣上傳，由伺服器回報錯誤
+  }
+}
+async function post(url, file) {
+  const res = await fetch(url, {method:"POST", body:file, headers:{"Content-Type":"application/octet-stream"}});
+  if (!res.ok && res.status === 413) return {error: "照片太大，無法上傳。請先縮小照片再試。"};
+  const text = await res.text();
+  try { return JSON.parse(text); }
+  catch (e) { return {error: `伺服器回應異常（HTTP ${res.status}）：${text.slice(0, 200)}`}; }
+}
+async function pump() {
+  if (running) return;
+  running = true;
+  try {
+    for (let it; (it = items.find(x => x.state === "queued")); ) {
+      try {
+        if (!it.check) {
+          it.state = "checking"; renderQueue(); if (selected === it.id) renderDetail();
+          it.upload = it.upload || await prepare(it.file);
+          it.check = await post("/api/check", it.upload);
+        }
+        if (it.check.error) { it.state = "done"; }
+        else if (!it.check.usable && !it.force) { it.state = "unusable"; }
+        else {
+          it.state = "recognizing"; renderQueue(); if (selected === it.id) renderDetail();
+          it.result = await post(`/api/recognize?synth=${$("#synth").checked ? 1 : 0}`, it.upload || it.file);
+          it.state = "done";
+          it.include = !it.result.error && !it.result.record.needs_review;
+        }
+      } catch (e) {
+        it.result = {error:`連不到本機伺服器，請確認 serve.py 還在執行。（${e.message}）`};
+        it.state = "done";
+      }
+      renderQueue(); if (selected === it.id) renderDetail();
+    }
+  } finally { running = false; }
+}
+function addFiles(files) {
+  const imgs = [...files].filter(f => f.type.startsWith("image/") || /\.(jpe?g|png|webp|bmp)$/i.test(f.name));
+  if (!imgs.length) return;
+  for (const f of imgs) items.push({id: ++seq, file: f, name: f.name, thumb: URL.createObjectURL(f), state: "queued"});
+  if (selected == null) selected = items[items.length - imgs.length].id;
+  renderQueue(); renderDetail(); pump();
+}
+$("#queueBody").addEventListener("change", e => {
+  const box = e.target.closest("[data-include]");
+  if (!box) return;
+  const it = items.find(x => x.id === +box.dataset.include);
+  if (it) { it.include = box.checked; renderQueue(); }
+});
+$("#queueBody").addEventListener("click", e => {
+  const force = e.target.closest("[data-force]");
+  if (force || e.target.closest("[data-include]")) return;
+  const tr = e.target.closest("tr[data-id]");
+  if (tr) { selected = +tr.dataset.id; renderQueue(); renderDetail(); }
+});
+$("#queueBody").addEventListener("keydown", e => {
+  const tr = e.target.closest("tr[data-id]");
+  if (tr && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); selected = +tr.dataset.id; renderQueue(); renderDetail(); }
+});
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-force]");
+  if (!b) return;
+  const it = items.find(x => x.id === +b.dataset.force);
+  if (it) { it.force = true; it.state = "queued"; selected = it.id; renderQueue(); renderDetail(); pump(); }
+});
+$("#clearAll").addEventListener("click", () => {
+  if (running) return;
+  for (const it of items) URL.revokeObjectURL(it.thumb);
+  items.length = 0; selected = null; renderQueue(); renderDetail();
+});
+$("#exportCsv").addEventListener("click", () => {
+  const cols = ["檔名","照片檢查","結果","複核原因","版型","姓","名","國籍","性別","出生日期","證件號碼","個人號碼","到期日","統一證號","居留期限","MRZ 檢查碼通過","MRZ 第1行","MRZ 第2行","MRZ 第3行"];
+  const label = {ok:"免複核", review:"需複核", unusable:"建議重拍（未辨識）", failed:"失敗", pending:"處理中"};
+  const rows = items.filter(it => canExport(it) && it.include).map(it => {
+    const rec = it.result && !it.result.error ? it.result.record : null;
+    const chk = !it.check ? "" : it.check.error ? "無法讀取" : !it.check.usable ? "建議重拍：" + it.check.checks.filter(x => x.status === "fail").map(x => x.label).join("、")
+      : it.check.checks.some(x => x.status === "warn") ? "可用（提醒：" + it.check.checks.filter(x => x.status === "warn").map(x => x.label).join("、") + "）" : "可用";
+    return [it.name, chk, label[outcome(it)], rec ? rec.review_reasons.join("；") : (it.result && it.result.error) || "",
+      rec?.template_key, rec?.surname, rec?.given_names, rec?.nationality, rec?.sex, rec?.date_of_birth, rec?.document_number,
+      rec?.personal_number, rec?.date_of_expiry, rec?.residence?.arc_number, rec?.residence?.valid_until,
+      rec ? (rec.mrz.checksum_valid ? "是" : rec.mrz.line1 ? "否" : "") : "", rec?.mrz.line1, rec?.mrz.line2, rec?.mrz.line3];
+  });
+  const csv = [cols, ...rows].map(r => r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\r\n");
+  download(new Blob(["\ufeff" + csv], {type:"text/csv;charset=utf-8"}), `辨識結果_${stamp()}.csv`);
+});
+function stamp() { return new Date().toISOString().slice(0, 16).replace(/[-:T]/g, ""); }
+function download(blob, name) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name;
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+$("#exportSql").addEventListener("click", async () => {
+  const chosen = items.filter(it => canExport(it) && it.include);
+  const dialect = $("#dialect").value, table = $("#tableName").value.trim();
+  const payload = {dialect, table, items: chosen.map(it => ({record: it.result.record, source_file: it.name, reviewed: outcome(it) === "review"}))};
+  try {
+    const res = await fetch("/api/sql", {method:"POST", body: JSON.stringify(payload), headers:{"Content-Type":"application/json"}});
+    const r = await res.json();
+    if (r.error) { $("#exportHint").textContent = r.error; return; }
+    download(new Blob([r.sql], {type:"application/sql;charset=utf-8"}), `${table}_${dialect}_${stamp()}.sql`);
+    $("#exportHint").textContent = `已匯出 ${r.count} 筆（${$("#dialect").selectedOptions[0].text}）`;
+  } catch (e) {
+    $("#exportHint").textContent = `連不到本機伺服器（${e.message}）`;
+  }
+});
+// ---- 本機 / 公開網站 ----
+const LOCAL = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
+if (!LOCAL) {
+  $("#cloudBanner").hidden = false;
+  $("#subtitle").textContent = "上傳護照或居留證照片，檢查這套流程能不能讀對。照片在雲端伺服器的記憶體中處理，不會儲存。";
+}
+const SAMPLE_LABEL = {"passport_clean.jpg": "一般護照", "passport_glare.jpg": "反光（會建議重拍）",
+  "passport_booklet_rotated.jpg": "整本打開＋旋轉 90°", "resident_card.jpg": "居留證（3 行 MRZ）"};
+fetch("/api/samples").then(r => r.json()).then(names => {
+  const box = $("#samples");
+  for (const n of names) {
+    const b = document.createElement("button");
+    b.className = "btn ghost small"; b.type = "button"; b.textContent = SAMPLE_LABEL[n] || n;
+    b.addEventListener("click", async () => {
+      const blob = await (await fetch("/samples/" + n)).blob();
+      addFiles([new File([blob], "範例_" + n, {type: "image/jpeg"})]);
+    });
+    box.appendChild(b);
+  }
+  box.hidden = names.length === 0;
+}).catch(() => {});
+const drop = $("#drop");
+$("#file").addEventListener("change", e => { addFiles(e.target.files); e.target.value = ""; });
+for (const ev of ["dragenter", "dragover"]) drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); });
+for (const ev of ["dragleave", "drop"]) drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); });
+drop.addEventListener("drop", e => addFiles(e.dataTransfer.files));
+document.addEventListener("paste", e => {
+  if ($("#panel-photo").hidden) return;
+  addFiles(e.clipboardData?.files || []);
+});
+
+// ---- manual MRZ ----
+async function verify() {
+  const out = $("#result");
+  try {
+    const res = await fetch("/api/mrz", {method:"POST", body:$("#mrzText").value, headers:{"Content-Type":"text/plain; charset=utf-8"}});
+    const r = await res.json();
+    out.innerHTML = r.error ? `<div class="status err"><span class="icon">✗</span><div><h2>格式不對</h2><div class="meta">${esc(r.error)}</div></div></div>` : mrzSection(r.mrz);
+  } catch (e) {
+    out.innerHTML = `<div class="status err"><span class="icon">✗</span><div><h2>連不到本機伺服器</h2><div class="meta">請確認 serve.py 還在執行。</div></div></div>`;
+  }
+}
+$("#verify").addEventListener("click", verify);
+$("#mrzText").addEventListener("keydown", e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) verify(); });
+for (const b of document.querySelectorAll("[data-ex]")) b.addEventListener("click", () => { $("#mrzText").value = EX[b.dataset.ex]; verify(); });
+</script>
+</body>
+</html>

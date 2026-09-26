@@ -1,0 +1,15 @@
+# 本機開發用的 Python 相依套件（已驗證的版本）。安裝：.venv/bin/pip install -r requirements-local.txt
+# （雲端部署用 requirements.txt）
+#
+# OpenCV 不從 pip 安裝：pip 上的 opencv-python / opencv-python-headless 都打包了 FFmpeg，
+# 內含 GPL 授權的 x264 / x265 / rubberband。請改用 scripts/build_opencv.sh 從原始碼編譯
+# 只含 core / imgproc / imgcodecs 的版本（詳見 THIRD_PARTY_NOTICES.md）。
+# 請勿在此加入 opencv-python*（雲端的 requirements.txt 例外）；tests/test_all.py 的 TestLicense 會擋下含 FFmpeg 的 OpenCV。
+#
+# 另需系統程式：Tesseract OCR 5.5.x（macOS：brew install tesseract），
+# 編譯 OpenCV 時需要 cmake 與 C++ 編譯器（只在編譯時使用，不隨軟體散布）。
+
+numpy==2.5.3
+pytesseract==0.3.13
+pillow==12.3.0
+packaging==26.3
