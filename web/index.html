@@ -4,36 +4,30 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>證件辨識驗證</title>
-<!-- 設計系統：ui-ux-pro-max「Minimalism & Swiss Style」＋ Fira Sans／Fira Code（載入失敗時退回系統字型；中文一律用系統字型） -->
+<!-- 設計：細緻極簡（依 ui-ux-pro-max 的 Minimalism & Swiss Style）＋ Inter／JetBrains Mono；中文用系統字型，字型載入失敗時退回系統字型 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Fira+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
 :root{
   color-scheme:light;
-  /* 中性色：slate；主色：機構深藍（按鈕），次色：藍（連結、選取）；狀態色只用在狀態，不當裝飾 */
-  --page:#f8fafc; --surface:#ffffff; --sunk:#eef2f7; --line:#e2e8f0; --line-strong:#cbd5e1;
-  --ink:#0f172a; --ink-2:#475569; --muted:#64748b;
-  --primary:#1e3a5f; --primary-hover:#172e4b; --on-primary:#ffffff;
-  --accent:#2563eb; --accent-wash:rgba(37,99,235,.09);
-  --good:#15803d; --good-wash:rgba(21,128,61,.10);
-  --bad:#dc2626; --bad-wash:rgba(220,38,38,.09);
-  --warn:#b45309; --warn-wash:rgba(217,119,6,.13);
-  --shadow:0 1px 2px rgba(15,23,42,.06); --topbar:#1e3a5f;
-  --sans:"Fira Sans",system-ui,-apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei","Segoe UI",sans-serif;
-  --mono:"Fira Code",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  /* 單色：黑白灰為主，狀態色（綠／黃／紅）只用在狀態 */
+  --page:#ffffff; --surface:#ffffff; --sunk:#f6f6f6; --line:#ececec; --line-strong:#dcdcdc;
+  --ink:#111111; --ink-2:#555555; --muted:#6e6e6e;
+  --primary:#111111; --primary-hover:#333333; --on-primary:#ffffff; --accent:#111111; --accent-wash:rgba(0,0,0,.04);
+  --good:#1f7a45; --good-wash:rgba(31,122,69,.07); --bad:#c0392b; --bad-wash:rgba(192,57,43,.06); --warn:#9a6700; --warn-wash:rgba(154,103,0,.08);
+  --shadow:none; --topbar:#ffffff;
+  --sans:"Inter",system-ui,-apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
 }
 @media (prefers-color-scheme:dark){
   :root{
     color-scheme:dark;
-    --page:#0b1220; --surface:#111a2b; --sunk:#1a2538; --line:#243149; --line-strong:#334463;
-    --ink:#e2e8f0; --ink-2:#b6c2d4; --muted:#8fa0b8;
-    --primary:#2563eb; --primary-hover:#1d4ed8; --on-primary:#ffffff;
-    --accent:#7aa7ff; --accent-wash:rgba(122,167,255,.14);
-    --good:#4ade80; --good-wash:rgba(74,222,128,.13);
-    --bad:#f87171; --bad-wash:rgba(248,113,113,.15);
-    --warn:#fbbf24; --warn-wash:rgba(251,191,36,.14);
-    --shadow:none; --topbar:#0f1b30;
+    --page:#0e0e0e; --surface:#131313; --sunk:#1b1b1b; --line:#262626; --line-strong:#383838;
+    --ink:#ededed; --ink-2:#b3b3b3; --muted:#8f8f8f;
+    --primary:#ededed; --primary-hover:#ffffff; --on-primary:#111111; --accent:#ededed; --accent-wash:rgba(255,255,255,.06);
+    --good:#5fcf8a; --good-wash:rgba(95,207,138,.10); --bad:#f08a7e; --bad-wash:rgba(240,138,126,.10); --warn:#e0b252; --warn-wash:rgba(224,178,82,.10);
+    --shadow:none; --topbar:#0e0e0e;
   }
 }
 *{box-sizing:border-box}
@@ -153,7 +147,31 @@ table.edit,table.log{width:max-content;min-width:100%}
 .tag{display:inline-block;font-size:12px;font-weight:500;border-radius:4px;padding:1px 6px;white-space:nowrap}
 .tag.bad{background:var(--bad-wash);color:var(--bad)} .tag.warn{background:var(--warn-wash);color:var(--warn)}
 .tag.edited{background:var(--accent-wash);color:var(--accent)}
-@media (max-width:760px){.imgs,.grid2{grid-template-columns:minmax(0,1fr)}.queue .fname{max-width:120px}}
+
+/* 細緻極簡（單色、1px 細線、無陰影、輕字重）：元件規則 */
+body{font-size:14.5px;font-weight:400;letter-spacing:.005em}
+.topbar{color:var(--ink);border-bottom:1px solid var(--line)}
+.topbar .inner{font-weight:500;padding:14px 16px}
+.topbar .tag{color:var(--muted)}
+.wrap{gap:28px;padding-block:44px 80px}
+h1{font-size:28px;font-weight:500;letter-spacing:-.02em}
+h2{font-size:13px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.card{border-radius:4px;border-color:var(--line);padding:28px}
+.drop{border:1px dashed var(--line-strong);border-radius:4px;background:var(--page)}
+.drop svg{color:var(--ink-2)} .drop strong{font-weight:500}
+.btn{border-radius:3px;font-weight:500;letter-spacing:.01em}
+.btn.ghost{border-color:var(--line-strong)}
+.tabs{background:transparent;border-bottom:1px solid var(--line);border-radius:0;padding:0;gap:18px}
+.tabs button{border-radius:0;padding:8px 0;background:transparent!important;box-shadow:none!important;border-bottom:1.5px solid transparent;font-weight:400}
+.tabs button[aria-selected="true"]{border-bottom-color:var(--ink);font-weight:500}
+th{background:transparent;font-weight:500;font-size:11.5px;letter-spacing:.06em;border-bottom-color:var(--line)}
+.pill{background:transparent;border:1px solid var(--line-strong);font-weight:400}
+.pill.ok{border-color:rgba(31,122,69,.35)} .pill.bad{border-color:rgba(192,57,43,.35)} .pill.warn{border-color:rgba(154,103,0,.35)}
+.status{border-radius:4px;border:1px solid var(--line);border-left:2px solid transparent;background:var(--surface)!important}
+.status.ok{border-left-color:var(--good)} .status.review{border-left-color:var(--warn)} .status.err{border-left-color:var(--bad)}
+.banner{border-radius:4px;border:1px solid var(--line);border-left:2px solid var(--warn);background:var(--warn-wash)}
+.edit input{border-radius:3px}
+@media (max-width:760px){.card{padding:16px}.wrap{padding-block:28px 64px}.imgs,.grid2{grid-template-columns:minmax(0,1fr)}.queue .fname{max-width:120px}}
 </style>
 </head>
 <body>
@@ -204,7 +222,7 @@ table.edit,table.log{width:max-content;min-width:100%}
       <div id="editArea" hidden>
         <h2>資料預覽與修改</h2>
         <p class="hint">這就是匯出的內容，每一格都可以直接修改（按 Enter 或點別處即儲存）。
-          <span class="tag bad">! 紅框</span> 系統發現問題，必須確認；<span class="tag warn">? 黃框</span> 不尋常或無法自動驗證，請目視確認；<span class="tag edited">✎ 藍框</span> 已人工修改；<span class="tag bad">✕ 虛線</span> 格式不對。滑鼠移到格子上可看原因。</p>
+          <span class="tag bad">! 紅框</span> 系統發現問題，必須確認；<span class="tag warn">? 黃框</span> 不尋常或無法自動驗證，請目視確認；<span class="tag edited">✎ 深色框</span> 已人工修改；<span class="tag bad">✕ 虛線</span> 格式不對。滑鼠移到格子上可看原因。</p>
         <div class="tbl"><table class="edit"><thead id="editHead"></thead><tbody id="editBody"></tbody></table></div>
         <h2>注意事項與修改紀錄</h2>
         <p class="hint">列出每一筆系統發現的差異，以及哪些欄位由人工修改（原值 → 新值、時間）。匯出 SQL 時修改紀錄會一起寫入「資料表名稱_changes」。</p>
