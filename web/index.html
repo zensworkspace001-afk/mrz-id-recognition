@@ -4,31 +4,27 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>證件辨識驗證</title>
-<!-- 設計：細緻極簡（依 ui-ux-pro-max 的 Minimalism & Swiss Style）＋ Inter／JetBrains Mono；中文用系統字型，字型載入失敗時退回系統字型 -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<script>/* 設計預覽：?style=apple（apple-ui-designer），不影響預設樣式 */ if (/[?&]style=apple\b/.test(location.search)) document.documentElement.dataset.style = "apple";</script>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<!-- 設計：Apple 風格（依 apple-ui-designer），系統字型（SF Pro／PingFang），不載入外部字型 -->
 <style>
 :root{
+  /* iOS 系統色：分組背景 #F2F2F7、系統灰、系統藍（只用在主要動作）；狀態色只用在狀態 */
   color-scheme:light;
-  /* 單色：黑白灰為主，狀態色（綠／黃／紅）只用在狀態 */
-  --page:#ffffff; --surface:#ffffff; --sunk:#f6f6f6; --line:#ececec; --line-strong:#dcdcdc;
-  --ink:#111111; --ink-2:#555555; --muted:#6e6e6e;
-  --primary:#111111; --primary-hover:#333333; --on-primary:#ffffff; --accent:#111111; --accent-wash:rgba(0,0,0,.04);
-  --good:#1f7a45; --good-wash:rgba(31,122,69,.07); --bad:#c0392b; --bad-wash:rgba(192,57,43,.06); --warn:#9a6700; --warn-wash:rgba(154,103,0,.08);
-  --shadow:none; --topbar:#ffffff;
-  --sans:"Inter",system-ui,-apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;
-  --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --page:#f2f2f7; --surface:#ffffff; --sunk:rgba(118,118,128,.12); --line:rgba(60,60,67,.12); --line-strong:rgba(60,60,67,.29);
+  --ink:#000000; --ink-2:rgba(60,60,67,.85); --muted:rgba(60,60,67,.72);
+  --primary:#007aff; --primary-hover:#0062cc; --on-primary:#ffffff; --accent:#007aff; --accent-wash:rgba(0,122,255,.10);
+  --good:#248a3d; --good-wash:rgba(52,199,89,.14); --bad:#d70015; --bad-wash:rgba(255,59,48,.12); --warn:#b25000; --warn-wash:rgba(255,149,0,.15);
+  --shadow:none; --topbar:rgba(249,249,249,.78);
+  --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang TC","Helvetica Neue",system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,monospace;
 }
 @media (prefers-color-scheme:dark){
   :root{
     color-scheme:dark;
-    --page:#0e0e0e; --surface:#131313; --sunk:#1b1b1b; --line:#262626; --line-strong:#383838;
-    --ink:#ededed; --ink-2:#b3b3b3; --muted:#8f8f8f;
-    --primary:#ededed; --primary-hover:#ffffff; --on-primary:#111111; --accent:#ededed; --accent-wash:rgba(255,255,255,.06);
-    --good:#5fcf8a; --good-wash:rgba(95,207,138,.10); --bad:#f08a7e; --bad-wash:rgba(240,138,126,.10); --warn:#e0b252; --warn-wash:rgba(224,178,82,.10);
-    --shadow:none; --topbar:#0e0e0e;
+    --page:#000000; --surface:#1c1c1e; --sunk:rgba(118,118,128,.24); --line:rgba(84,84,88,.55); --line-strong:rgba(84,84,88,.8);
+    --ink:#ffffff; --ink-2:rgba(235,235,245,.78); --muted:rgba(235,235,245,.62);
+    --primary:#0a84ff; --primary-hover:#409cff; --accent:#0a84ff; --accent-wash:rgba(10,132,255,.18);
+    --good:#30d158; --good-wash:rgba(48,209,88,.16); --bad:#ff453a; --bad-wash:rgba(255,69,58,.16); --warn:#ff9f0a; --warn-wash:rgba(255,159,10,.16);
+    --topbar:rgba(22,22,24,.78);
   }
 }
 *{box-sizing:border-box}
@@ -149,98 +145,54 @@ table.edit,table.log{width:max-content;min-width:100%}
 .tag.bad{background:var(--bad-wash);color:var(--bad)} .tag.warn{background:var(--warn-wash);color:var(--warn)}
 .tag.edited{background:var(--accent-wash);color:var(--accent)}
 
-/* 細緻極簡（單色、1px 細線、無陰影、輕字重）：元件規則 */
-body{font-size:14.5px;font-weight:400;letter-spacing:.005em}
-.topbar{color:var(--ink);border-bottom:1px solid var(--line)}
-.topbar .inner{font-weight:500;padding:14px 16px}
-.topbar .tag{color:var(--muted)}
-.wrap{gap:28px;padding-block:44px 80px}
-h1{font-size:28px;font-weight:500;letter-spacing:-.02em}
-h2{font-size:13px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
-.card{border-radius:4px;border-color:var(--line);padding:28px}
-.drop{border:1px dashed var(--line-strong);border-radius:4px;background:var(--page)}
-.drop svg{color:var(--ink-2)} .drop strong{font-weight:500}
-.btn{border-radius:3px;font-weight:500;letter-spacing:.01em}
-.btn.ghost{border-color:var(--line-strong)}
-.tabs{background:transparent;border-bottom:1px solid var(--line);border-radius:0;padding:0;gap:18px}
-.tabs button{border-radius:0;padding:8px 0;background:transparent!important;box-shadow:none!important;border-bottom:1.5px solid transparent;font-weight:400}
-.tabs button[aria-selected="true"]{border-bottom-color:var(--ink);font-weight:500}
-th{background:transparent;font-weight:500;font-size:11.5px;letter-spacing:.06em;border-bottom-color:var(--line)}
-.pill{background:transparent;border:1px solid var(--line-strong);font-weight:400}
-.pill.ok{border-color:rgba(31,122,69,.35)} .pill.bad{border-color:rgba(192,57,43,.35)} .pill.warn{border-color:rgba(154,103,0,.35)}
-.status{border-radius:4px;border:1px solid var(--line);border-left:2px solid transparent;background:var(--surface)!important}
-.status.ok{border-left-color:var(--good)} .status.review{border-left-color:var(--warn)} .status.err{border-left-color:var(--bad)}
-.banner{border-radius:4px;border:1px solid var(--line);border-left:2px solid var(--warn);background:var(--warn-wash)}
-.edit input{border-radius:3px}
-
-/* ===== 預覽：apple-ui-designer（iOS 原生風格）。?style=apple 才套用 ===== */
-html[data-style="apple"]{
-  color-scheme:light;
-  --page:#f2f2f7; --surface:#ffffff; --sunk:rgba(118,118,128,.12); --line:rgba(60,60,67,.12); --line-strong:rgba(60,60,67,.29);
-  --ink:#000000; --ink-2:rgba(60,60,67,.85); --muted:rgba(60,60,67,.72);
-  --primary:#007aff; --primary-hover:#0062cc; --on-primary:#ffffff; --accent:#007aff; --accent-wash:rgba(0,122,255,.10);
-  --good:#248a3d; --good-wash:rgba(52,199,89,.14); --bad:#d70015; --bad-wash:rgba(255,59,48,.12); --warn:#b25000; --warn-wash:rgba(255,149,0,.15);
-  --shadow:none; --topbar:rgba(249,249,249,.78);
-  --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang TC","Helvetica Neue",system-ui,sans-serif;
-  --mono:ui-monospace,"SF Mono",Menlo,monospace;
-}
-@media (prefers-color-scheme:dark){
-  html[data-style="apple"]{
-    color-scheme:dark;
-    --page:#000000; --surface:#1c1c1e; --sunk:rgba(118,118,128,.24); --line:rgba(84,84,88,.55); --line-strong:rgba(84,84,88,.8);
-    --ink:#ffffff; --ink-2:rgba(235,235,245,.78); --muted:rgba(235,235,245,.62);
-    --primary:#0a84ff; --primary-hover:#409cff; --accent:#0a84ff; --accent-wash:rgba(10,132,255,.18);
-    --good:#30d158; --good-wash:rgba(48,209,88,.16); --bad:#ff453a; --bad-wash:rgba(255,69,58,.16); --warn:#ff9f0a; --warn-wash:rgba(255,159,10,.16);
-    --topbar:rgba(22,22,24,.78);
-  }
-}
-html[data-style="apple"] body{font-size:15px;letter-spacing:-.01em;-webkit-font-smoothing:antialiased}
+/* ===== Apple 風格（依 apple-ui-designer：iOS 原生、分組、無邊框、系統字型）：元件規則 ===== */
+body{font-size:15px;letter-spacing:-.01em;-webkit-font-smoothing:antialiased}
 /* 導覽列：半透明＋模糊，固定在上方 */
-html[data-style="apple"] .topbar{position:sticky;top:0;z-index:10;background:var(--topbar);color:var(--ink);border-bottom:.5px solid var(--line);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px)}
-html[data-style="apple"] .topbar .inner{justify-content:center;font-weight:600;font-size:15px;padding:12px 16px;letter-spacing:-.02em}
-html[data-style="apple"] .topbar svg,html[data-style="apple"] .topbar .tag{display:none}
-html[data-style="apple"] .wrap{max-width:1080px;gap:22px;padding-block:20px 80px}
+.topbar{position:sticky;top:0;z-index:10;background:var(--topbar);color:var(--ink);border-bottom:.5px solid var(--line);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px)}
+.topbar .inner{justify-content:center;font-weight:600;font-size:15px;padding:12px 16px;letter-spacing:-.02em}
+.topbar svg,.topbar .tag{display:none}
+.wrap{max-width:1080px;gap:22px;padding-block:20px 80px}
 /* 大標題 */
-html[data-style="apple"] h1{font-size:34px;font-weight:700;letter-spacing:-.03em;line-height:1.15}
-html[data-style="apple"] .sub{color:var(--muted);font-size:15px}
-html[data-style="apple"] h2{font-size:20px;font-weight:600;letter-spacing:-.02em;text-transform:none;color:var(--ink)}
+h1{font-size:34px;font-weight:700;letter-spacing:-.03em;line-height:1.15}
+.sub{color:var(--muted);font-size:15px}
+h2{font-size:20px;font-weight:600;letter-spacing:-.02em;text-transform:none;color:var(--ink)}
 /* 分段控制 */
-html[data-style="apple"] .tabs{background:var(--sunk);border-radius:9px;padding:2px;gap:0;border:0}
-html[data-style="apple"] .tabs button{border-radius:7px;padding:6px 18px;min-height:32px;font-size:13.5px;font-weight:500;color:var(--ink);border:0}
-html[data-style="apple"] .tabs button[aria-selected="true"]{background:var(--surface)!important;font-weight:600;box-shadow:0 3px 8px rgba(0,0,0,.12),0 3px 1px rgba(0,0,0,.04)!important}
-@media (prefers-color-scheme:dark){html[data-style="apple"] .tabs button[aria-selected="true"]{background:#636366!important}}
+.tabs{background:var(--sunk);border-radius:9px;padding:2px;gap:0;border:0}
+.tabs button{border-radius:7px;padding:6px 18px;min-height:32px;font-size:13.5px;font-weight:500;color:var(--ink);border:0}
+.tabs button[aria-selected="true"]{background:var(--surface)!important;font-weight:600;box-shadow:0 3px 8px rgba(0,0,0,.12),0 3px 1px rgba(0,0,0,.04)!important}
+@media (prefers-color-scheme:dark){.tabs button[aria-selected="true"]{background:#636366!important}}
 /* 群組卡片：不用邊框，靠間距與分組 */
-html[data-style="apple"] .card{border:0;border-radius:14px;padding:20px;gap:16px;box-shadow:none}
-html[data-style="apple"] .drop{border:0;border-radius:12px;background:var(--accent-wash);color:var(--ink-2);padding:30px 16px}
-html[data-style="apple"] .drop svg{color:var(--accent)}
-html[data-style="apple"] .drop strong{font-weight:600;font-size:17px}
-html[data-style="apple"] .drop:hover{background:rgba(0,122,255,.14)}
+.card{border:0;border-radius:14px;padding:20px;gap:16px;box-shadow:none}
+.drop{border:0;border-radius:12px;background:var(--accent-wash);color:var(--ink-2);padding:30px 16px}
+.drop svg{color:var(--accent)}
+.drop strong{font-weight:600;font-size:17px}
+.drop:hover{background:rgba(0,122,255,.14)}
 /* 按鈕：主要＝實心藍，次要＝淡藍底藍字 */
-html[data-style="apple"] .btn{border:0;border-radius:10px;font-weight:600;font-size:15px;min-height:44px;padding:10px 20px;letter-spacing:-.01em}
-html[data-style="apple"] .btn.small{min-height:32px;padding:5px 14px;font-size:14px;border-radius:999px}
-html[data-style="apple"] .btn.ghost{background:var(--accent-wash);color:var(--accent)}
-html[data-style="apple"] .btn.ghost:hover:not(:disabled){background:rgba(0,122,255,.16)}
-html[data-style="apple"] .btn:disabled{opacity:.35}
+.btn{border:0;border-radius:10px;font-weight:600;font-size:15px;min-height:44px;padding:10px 20px;letter-spacing:-.01em}
+.btn.small{min-height:32px;padding:5px 14px;font-size:14px;border-radius:999px}
+.btn.ghost{background:var(--accent-wash);color:var(--accent)}
+.btn.ghost:hover:not(:disabled){background:rgba(0,122,255,.16)}
+.btn:disabled{opacity:.35}
 /* 表格：iOS 清單節奏，只用細分隔線 */
-html[data-style="apple"] th{background:transparent;border-bottom:.5px solid var(--line);color:var(--muted);font-weight:400;font-size:13px;text-transform:none;letter-spacing:0}
-html[data-style="apple"] td{border-bottom:.5px solid var(--line)}
-html[data-style="apple"] .queue tbody tr[aria-selected="true"]{background:var(--accent-wash);box-shadow:none}
-html[data-style="apple"] .queue tbody tr:hover{background:var(--sunk)}
-html[data-style="apple"] .queue img.thumb{border-radius:8px}
-html[data-style="apple"] .pill{border:0;border-radius:999px;font-weight:500;padding:2px 10px}
-html[data-style="apple"] .tag{border-radius:6px}
+th{background:transparent;border-bottom:.5px solid var(--line);color:var(--muted);font-weight:400;font-size:13px;text-transform:none;letter-spacing:0}
+td{border-bottom:.5px solid var(--line)}
+.queue tbody tr[aria-selected="true"]{background:var(--accent-wash);box-shadow:none}
+.queue tbody tr:hover{background:var(--sunk)}
+.queue img.thumb{border-radius:8px}
+.pill{border:0;border-radius:999px;font-weight:500;padding:2px 10px}
+.tag{border-radius:6px}
 /* 狀態：柔和底色，不用側邊色條 */
-html[data-style="apple"] .status{border:0;border-radius:14px;padding:16px 18px}
-html[data-style="apple"] .status.ok{background:var(--good-wash)!important} html[data-style="apple"] .status.review{background:var(--warn-wash)!important} html[data-style="apple"] .status.err{background:var(--bad-wash)!important}
-html[data-style="apple"] .banner{border:0;border-radius:14px;background:var(--warn-wash)}
-html[data-style="apple"] .exportbar,html[data-style="apple"] #editArea{border-top:.5px solid var(--line)}
-html[data-style="apple"] .exportbar select,html[data-style="apple"] .exportbar input[type=text],html[data-style="apple"] textarea{border:0;background:var(--sunk);border-radius:10px}
-html[data-style="apple"] .edit input{border-radius:8px}
-html[data-style="apple"] .mrz{border:0;border-radius:12px}
-html[data-style="apple"] input[type=checkbox]{accent-color:var(--accent)}
-html[data-style="apple"] :focus-visible{outline:3px solid rgba(0,122,255,.5);outline-offset:1px}
+.status{border:0;border-radius:14px;padding:16px 18px}
+.status.ok{background:var(--good-wash)!important} .status.review{background:var(--warn-wash)!important} .status.err{background:var(--bad-wash)!important}
+.banner{border:0;border-radius:14px;background:var(--warn-wash)}
+.exportbar,#editArea{border-top:.5px solid var(--line)}
+.exportbar select,.exportbar input[type=text],textarea{border:0;background:var(--sunk);border-radius:10px}
+.edit input{border-radius:8px}
+.mrz{border:0;border-radius:12px}
+input[type=checkbox]{accent-color:var(--accent)}
+:focus-visible{outline:3px solid rgba(0,122,255,.5);outline-offset:1px}
 @media (prefers-reduced-motion:no-preference){
-  html[data-style="apple"] #result > *{animation:appleIn .28s cubic-bezier(.2,.8,.2,1)}
+  #result > *{animation:appleIn .28s cubic-bezier(.2,.8,.2,1)}
 }
 @keyframes appleIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @media (max-width:760px){.card{padding:16px}.wrap{padding-block:28px 64px}.imgs,.grid2{grid-template-columns:minmax(0,1fr)}.queue .fname{max-width:120px}}
