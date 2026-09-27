@@ -7,6 +7,7 @@
 <!-- 設計：細緻極簡（依 ui-ux-pro-max 的 Minimalism & Swiss Style）＋ Inter／JetBrains Mono；中文用系統字型，字型載入失敗時退回系統字型 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<script>/* 設計預覽：?style=apple（apple-ui-designer），不影響預設樣式 */ if (/[?&]style=apple\b/.test(location.search)) document.documentElement.dataset.style = "apple";</script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
 :root{
@@ -171,6 +172,77 @@ th{background:transparent;font-weight:500;font-size:11.5px;letter-spacing:.06em;
 .status.ok{border-left-color:var(--good)} .status.review{border-left-color:var(--warn)} .status.err{border-left-color:var(--bad)}
 .banner{border-radius:4px;border:1px solid var(--line);border-left:2px solid var(--warn);background:var(--warn-wash)}
 .edit input{border-radius:3px}
+
+/* ===== 預覽：apple-ui-designer（iOS 原生風格）。?style=apple 才套用 ===== */
+html[data-style="apple"]{
+  color-scheme:light;
+  --page:#f2f2f7; --surface:#ffffff; --sunk:rgba(118,118,128,.12); --line:rgba(60,60,67,.12); --line-strong:rgba(60,60,67,.29);
+  --ink:#000000; --ink-2:rgba(60,60,67,.85); --muted:rgba(60,60,67,.72);
+  --primary:#007aff; --primary-hover:#0062cc; --on-primary:#ffffff; --accent:#007aff; --accent-wash:rgba(0,122,255,.10);
+  --good:#248a3d; --good-wash:rgba(52,199,89,.14); --bad:#d70015; --bad-wash:rgba(255,59,48,.12); --warn:#b25000; --warn-wash:rgba(255,149,0,.15);
+  --shadow:none; --topbar:rgba(249,249,249,.78);
+  --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang TC","Helvetica Neue",system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){
+  html[data-style="apple"]{
+    color-scheme:dark;
+    --page:#000000; --surface:#1c1c1e; --sunk:rgba(118,118,128,.24); --line:rgba(84,84,88,.55); --line-strong:rgba(84,84,88,.8);
+    --ink:#ffffff; --ink-2:rgba(235,235,245,.78); --muted:rgba(235,235,245,.62);
+    --primary:#0a84ff; --primary-hover:#409cff; --accent:#0a84ff; --accent-wash:rgba(10,132,255,.18);
+    --good:#30d158; --good-wash:rgba(48,209,88,.16); --bad:#ff453a; --bad-wash:rgba(255,69,58,.16); --warn:#ff9f0a; --warn-wash:rgba(255,159,10,.16);
+    --topbar:rgba(22,22,24,.78);
+  }
+}
+html[data-style="apple"] body{font-size:15px;letter-spacing:-.01em;-webkit-font-smoothing:antialiased}
+/* 導覽列：半透明＋模糊，固定在上方 */
+html[data-style="apple"] .topbar{position:sticky;top:0;z-index:10;background:var(--topbar);color:var(--ink);border-bottom:.5px solid var(--line);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px)}
+html[data-style="apple"] .topbar .inner{justify-content:center;font-weight:600;font-size:15px;padding:12px 16px;letter-spacing:-.02em}
+html[data-style="apple"] .topbar svg,html[data-style="apple"] .topbar .tag{display:none}
+html[data-style="apple"] .wrap{max-width:1080px;gap:22px;padding-block:20px 80px}
+/* 大標題 */
+html[data-style="apple"] h1{font-size:34px;font-weight:700;letter-spacing:-.03em;line-height:1.15}
+html[data-style="apple"] .sub{color:var(--muted);font-size:15px}
+html[data-style="apple"] h2{font-size:20px;font-weight:600;letter-spacing:-.02em;text-transform:none;color:var(--ink)}
+/* 分段控制 */
+html[data-style="apple"] .tabs{background:var(--sunk);border-radius:9px;padding:2px;gap:0;border:0}
+html[data-style="apple"] .tabs button{border-radius:7px;padding:6px 18px;min-height:32px;font-size:13.5px;font-weight:500;color:var(--ink);border:0}
+html[data-style="apple"] .tabs button[aria-selected="true"]{background:var(--surface)!important;font-weight:600;box-shadow:0 3px 8px rgba(0,0,0,.12),0 3px 1px rgba(0,0,0,.04)!important}
+@media (prefers-color-scheme:dark){html[data-style="apple"] .tabs button[aria-selected="true"]{background:#636366!important}}
+/* 群組卡片：不用邊框，靠間距與分組 */
+html[data-style="apple"] .card{border:0;border-radius:14px;padding:20px;gap:16px;box-shadow:none}
+html[data-style="apple"] .drop{border:0;border-radius:12px;background:var(--accent-wash);color:var(--ink-2);padding:30px 16px}
+html[data-style="apple"] .drop svg{color:var(--accent)}
+html[data-style="apple"] .drop strong{font-weight:600;font-size:17px}
+html[data-style="apple"] .drop:hover{background:rgba(0,122,255,.14)}
+/* 按鈕：主要＝實心藍，次要＝淡藍底藍字 */
+html[data-style="apple"] .btn{border:0;border-radius:10px;font-weight:600;font-size:15px;min-height:44px;padding:10px 20px;letter-spacing:-.01em}
+html[data-style="apple"] .btn.small{min-height:32px;padding:5px 14px;font-size:14px;border-radius:999px}
+html[data-style="apple"] .btn.ghost{background:var(--accent-wash);color:var(--accent)}
+html[data-style="apple"] .btn.ghost:hover:not(:disabled){background:rgba(0,122,255,.16)}
+html[data-style="apple"] .btn:disabled{opacity:.35}
+/* 表格：iOS 清單節奏，只用細分隔線 */
+html[data-style="apple"] th{background:transparent;border-bottom:.5px solid var(--line);color:var(--muted);font-weight:400;font-size:13px;text-transform:none;letter-spacing:0}
+html[data-style="apple"] td{border-bottom:.5px solid var(--line)}
+html[data-style="apple"] .queue tbody tr[aria-selected="true"]{background:var(--accent-wash);box-shadow:none}
+html[data-style="apple"] .queue tbody tr:hover{background:var(--sunk)}
+html[data-style="apple"] .queue img.thumb{border-radius:8px}
+html[data-style="apple"] .pill{border:0;border-radius:999px;font-weight:500;padding:2px 10px}
+html[data-style="apple"] .tag{border-radius:6px}
+/* 狀態：柔和底色，不用側邊色條 */
+html[data-style="apple"] .status{border:0;border-radius:14px;padding:16px 18px}
+html[data-style="apple"] .status.ok{background:var(--good-wash)!important} html[data-style="apple"] .status.review{background:var(--warn-wash)!important} html[data-style="apple"] .status.err{background:var(--bad-wash)!important}
+html[data-style="apple"] .banner{border:0;border-radius:14px;background:var(--warn-wash)}
+html[data-style="apple"] .exportbar,html[data-style="apple"] #editArea{border-top:.5px solid var(--line)}
+html[data-style="apple"] .exportbar select,html[data-style="apple"] .exportbar input[type=text],html[data-style="apple"] textarea{border:0;background:var(--sunk);border-radius:10px}
+html[data-style="apple"] .edit input{border-radius:8px}
+html[data-style="apple"] .mrz{border:0;border-radius:12px}
+html[data-style="apple"] input[type=checkbox]{accent-color:var(--accent)}
+html[data-style="apple"] :focus-visible{outline:3px solid rgba(0,122,255,.5);outline-offset:1px}
+@media (prefers-reduced-motion:no-preference){
+  html[data-style="apple"] #result > *{animation:appleIn .28s cubic-bezier(.2,.8,.2,1)}
+}
+@keyframes appleIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @media (max-width:760px){.card{padding:16px}.wrap{padding-block:28px 64px}.imgs,.grid2{grid-template-columns:minmax(0,1fr)}.queue .fname{max-width:120px}}
 </style>
 </head>
@@ -222,7 +294,7 @@ th{background:transparent;font-weight:500;font-size:11.5px;letter-spacing:.06em;
       <div id="editArea" hidden>
         <h2>資料預覽與修改</h2>
         <p class="hint">這就是匯出的內容，每一格都可以直接修改（按 Enter 或點別處即儲存）。
-          <span class="tag bad">! 紅框</span> 系統發現問題，必須確認；<span class="tag warn">? 黃框</span> 不尋常或無法自動驗證，請目視確認；<span class="tag edited">✎ 深色框</span> 已人工修改；<span class="tag bad">✕ 虛線</span> 格式不對。滑鼠移到格子上可看原因。</p>
+          <span class="tag bad">! 紅框</span> 系統發現問題，必須確認；<span class="tag warn">? 黃框</span> 不尋常或無法自動驗證，請目視確認；<span class="tag edited">✎ 標記</span> 已人工修改；<span class="tag bad">✕ 虛線</span> 格式不對。滑鼠移到格子上可看原因。</p>
         <div class="tbl"><table class="edit"><thead id="editHead"></thead><tbody id="editBody"></tbody></table></div>
         <h2>注意事項與修改紀錄</h2>
         <p class="hint">列出每一筆系統發現的差異，以及哪些欄位由人工修改（原值 → 新值、時間）。匯出 SQL 時修改紀錄會一起寫入「資料表名稱_changes」。</p>
