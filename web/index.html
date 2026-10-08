@@ -4,288 +4,470 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>證件辨識驗證</title>
-<!-- 設計：Apple 風格（依 apple-ui-designer），系統字型（SF Pro／PingFang），不載入外部字型 -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Cdefs%3E%3ClinearGradient id=%22g%22 x1=%220%22 y1=%220%22 x2=%221%22 y2=%221%22%3E%3Cstop offset=%220%22 stop-color=%22%2364d2ff%22/%3E%3Cstop offset=%22.45%22 stop-color=%22%230a84ff%22/%3E%3Cstop offset=%221%22 stop-color=%22%235e5ce6%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22url(%23g)%22/%3E%3Crect x=%2212%22 y=%2217%22 width=%2240%22 height=%2230%22 rx=%224%22 fill=%22%23fff%22/%3E%3Crect x=%2216%22 y=%2221%22 width=%229%22 height=%2211%22 rx=%222%22 fill=%22%23b8cdf3%22/%3E%3Cpath d=%22M16 37h32M16 42h32%22 stroke=%22%231d3f7a%22 stroke-width=%222.4%22 stroke-dasharray=%222.4 1.6%22/%3E%3C/svg%3E">
 <style>
+/* 設計：Apple 風格（依 apple-ui-designer）——系統字型、分組卡片、髮絲線、柔和多層陰影、iOS 設定式彩色圖示；不載入外部字型 */
 :root{
-  /* iOS 系統色：分組背景 #F2F2F7、系統灰、系統藍（只用在主要動作）；狀態色只用在狀態 */
   color-scheme:light;
-  --page:#f2f2f7; --surface:#ffffff; --sunk:rgba(118,118,128,.12); --line:rgba(60,60,67,.12); --line-strong:rgba(60,60,67,.29);
-  --ink:#000000; --ink-2:rgba(60,60,67,.85); --muted:rgba(60,60,67,.72);
-  --primary:#007aff; --primary-hover:#0062cc; --on-primary:#ffffff; --accent:#007aff; --accent-wash:rgba(0,122,255,.10);
-  --good:#248a3d; --good-wash:rgba(52,199,89,.14); --bad:#d70015; --bad-wash:rgba(255,59,48,.12); --warn:#b25000; --warn-wash:rgba(255,149,0,.15);
-  --shadow:none; --topbar:rgba(249,249,249,.78);
+  --page:#f2f2f7; --surface:#ffffff; --raised:#ffffff; --sunk:rgba(118,118,128,.12); --sunk-2:rgba(118,118,128,.06);
+  --line:rgba(60,60,67,.12); --line-strong:rgba(60,60,67,.24); --hair:rgba(0,0,0,.06);
+  --ink:#1d1d1f; --ink-2:rgba(60,60,67,.82); --muted:rgba(60,60,67,.6);
+  --primary:#007aff; --primary-2:#3395ff; --primary-hover:#0066d6; --on-primary:#ffffff; --accent:#007aff;
+  --accent-wash:rgba(0,122,255,.08); --accent-wash-2:rgba(0,122,255,.14);
+  --good:#248a3d; --good-solid:#34c759; --good-wash:rgba(52,199,89,.13);
+  --bad:#d70015; --bad-solid:#ff3b30; --bad-wash:rgba(255,59,48,.10);
+  --warn:#b25000; --warn-solid:#ff9500; --warn-wash:rgba(255,149,0,.13);
+  --card-shadow:0 0 0 .5px var(--hair),0 1px 2px rgba(0,0,0,.03),0 10px 30px -10px rgba(0,0,0,.08);
+  --lift-shadow:0 0 0 .5px var(--hair),0 2px 4px rgba(0,0,0,.04),0 14px 34px -10px rgba(0,0,0,.14);
+  --topbar:rgba(250,250,252,.72); --seg-on:#ffffff;
+  --mrz-bg:#fbfaf6; --mrz-ink:#1d1d1f; --mrz-guilloche:rgba(0,122,255,.05);
   --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang TC","Helvetica Neue",system-ui,sans-serif;
+  --display:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang TC","Helvetica Neue",system-ui,sans-serif;
   --mono:ui-monospace,"SF Mono",Menlo,monospace;
 }
 @media (prefers-color-scheme:dark){
-  :root{
+  :root:not([data-theme="light"]){
     color-scheme:dark;
-    --page:#000000; --surface:#1c1c1e; --sunk:rgba(118,118,128,.24); --line:rgba(84,84,88,.55); --line-strong:rgba(84,84,88,.8);
-    --ink:#ffffff; --ink-2:rgba(235,235,245,.78); --muted:rgba(235,235,245,.62);
-    --primary:#0a84ff; --primary-hover:#409cff; --accent:#0a84ff; --accent-wash:rgba(10,132,255,.18);
-    --good:#30d158; --good-wash:rgba(48,209,88,.16); --bad:#ff453a; --bad-wash:rgba(255,69,58,.16); --warn:#ff9f0a; --warn-wash:rgba(255,159,10,.16);
-    --topbar:rgba(22,22,24,.78);
+    --page:#000000; --surface:#1c1c1e; --raised:#2c2c2e; --sunk:rgba(118,118,128,.24); --sunk-2:rgba(118,118,128,.12);
+    --line:rgba(84,84,88,.6); --line-strong:rgba(84,84,88,.9); --hair:rgba(255,255,255,.07);
+    --ink:#f5f5f7; --ink-2:rgba(235,235,245,.8); --muted:rgba(235,235,245,.58);
+    --primary:#0a84ff; --primary-2:#3d9bff; --primary-hover:#409cff; --accent:#0a84ff;
+    --accent-wash:rgba(10,132,255,.16); --accent-wash-2:rgba(10,132,255,.24);
+    --good:#30d158; --good-solid:#30d158; --good-wash:rgba(48,209,88,.15);
+    --bad:#ff453a; --bad-solid:#ff453a; --bad-wash:rgba(255,69,58,.15);
+    --warn:#ff9f0a; --warn-solid:#ff9f0a; --warn-wash:rgba(255,159,10,.15);
+    --card-shadow:0 0 0 .5px var(--hair); --lift-shadow:0 0 0 .5px var(--hair),0 14px 34px -10px rgba(0,0,0,.6);
+    --topbar:rgba(22,22,24,.72); --seg-on:#636366;
+    --mrz-bg:#232325; --mrz-ink:#f2f2f7; --mrz-guilloche:rgba(10,132,255,.07);
   }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --page:#000000; --surface:#1c1c1e; --raised:#2c2c2e; --sunk:rgba(118,118,128,.24); --sunk-2:rgba(118,118,128,.12);
+  --line:rgba(84,84,88,.6); --line-strong:rgba(84,84,88,.9); --hair:rgba(255,255,255,.07);
+  --ink:#f5f5f7; --ink-2:rgba(235,235,245,.8); --muted:rgba(235,235,245,.58);
+  --primary:#0a84ff; --primary-2:#3d9bff; --primary-hover:#409cff; --accent:#0a84ff;
+  --accent-wash:rgba(10,132,255,.16); --accent-wash-2:rgba(10,132,255,.24);
+  --good:#30d158; --good-solid:#30d158; --good-wash:rgba(48,209,88,.15);
+  --bad:#ff453a; --bad-solid:#ff453a; --bad-wash:rgba(255,69,58,.15);
+  --warn:#ff9f0a; --warn-solid:#ff9f0a; --warn-wash:rgba(255,159,10,.15);
+  --card-shadow:0 0 0 .5px var(--hair); --lift-shadow:0 0 0 .5px var(--hair),0 14px 34px -10px rgba(0,0,0,.6);
+  --topbar:rgba(22,22,24,.72); --seg-on:#636366;
+  --mrz-bg:#232325; --mrz-ink:#f2f2f7; --mrz-guilloche:rgba(10,132,255,.07);
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
-body{margin:0;background:var(--page);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
-.topbar{background:var(--topbar);color:#fff;border-bottom:1px solid var(--line)}
-.topbar .inner{max-width:1180px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:10px;font-weight:600;font-size:14px;letter-spacing:.02em}
-.topbar svg{flex:none}
-.topbar .tag{margin-left:auto;font-weight:500;font-size:12.5px;opacity:.85}
-.wrap{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:28px 64px;display:flex;flex-direction:column;gap:20px}
-h1{font-size:26px;line-height:1.25;margin:0;letter-spacing:-.01em}
-h2{font-size:16px;margin:0;letter-spacing:-.005em}
-.sub{margin:6px 0 0;color:var(--ink-2);max-width:68ch}
-.tabs{display:inline-flex;gap:2px;background:var(--sunk);padding:3px;border-radius:10px;align-self:flex-start}
-.tabs button{font:inherit;font-size:14px;border:0;background:transparent;color:var(--ink-2);padding:8px 16px;min-height:38px;border-radius:8px;cursor:pointer}
-.tabs button:hover{color:var(--ink)}
-.tabs button[aria-selected="true"]{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:0 0 0 1px var(--line),var(--shadow)}
-button:focus-visible,textarea:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible,.drop:focus-within,tr:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px;min-width:0;box-shadow:var(--shadow)}
-.drop{border:1.5px dashed var(--line-strong);border-radius:12px;padding:32px 16px;text-align:center;color:var(--ink-2);cursor:pointer;background:var(--page);display:flex;flex-direction:column;gap:8px;align-items:center}
-.drop:hover{border-color:var(--accent);color:var(--ink)}
-.drop.over{border-color:var(--accent);background:var(--accent-wash)}
-.drop svg{color:var(--accent)}
-.drop strong{color:var(--ink);font-size:16px}
+body{margin:0;background:var(--page);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5;letter-spacing:-.01em;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+code,kbd{font-family:var(--mono);font-size:.9em}
+code{background:var(--sunk);border-radius:5px;padding:1px 5px}
+kbd{display:inline-block;font-size:11px;line-height:16px;min-width:18px;text-align:center;border-radius:5px;padding:0 4px;background:var(--surface);color:var(--ink-2);box-shadow:0 0 0 .5px var(--line-strong),0 1px 0 var(--line-strong)}
+
+/* 導覽列：半透明＋模糊 */
+.topbar{position:sticky;top:0;z-index:10;background:var(--topbar);box-shadow:0 .5px 0 var(--line);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px)}
+.topbar .inner{max-width:1080px;margin:0 auto;padding:9px 16px;display:flex;align-items:center;gap:12px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:600;font-size:15px;letter-spacing:-.02em}
+.appicon{width:28px;height:28px;border-radius:7px;flex:none;display:grid;place-items:center;color:#fff;background:linear-gradient(180deg,#5ab0ff,#0071e3);box-shadow:inset 0 .5px 0 rgba(255,255,255,.4),0 1px 2px rgba(0,80,180,.3)}
+.chip{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;color:var(--good);background:var(--good-wash);border-radius:999px;padding:4px 10px;white-space:nowrap}
+.chip.warn{color:var(--warn);background:var(--warn-wash)}
+.appearance{display:inline-flex;background:var(--sunk);border-radius:8px;padding:2px}
+.appearance button{font:inherit;font-size:12px;font-weight:500;border:0;background:transparent;color:var(--ink-2);padding:3px 9px;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;gap:4px}
+.appearance button[aria-pressed="true"]{background:var(--seg-on);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12),0 0 0 .5px var(--hair)}
+
+.wrap{max-width:1080px;margin:0 auto;padding:36px 16px 56px;display:flex;flex-direction:column;gap:20px}
+.stack{display:flex;flex-direction:column;gap:20px}
+header{display:flex;flex-direction:column;gap:4px;padding-bottom:4px}
+header.hero{flex-direction:row;align-items:center;gap:22px}
+.heroicon{width:92px;height:92px;flex:none;filter:drop-shadow(0 12px 24px rgba(0,90,200,.26)) drop-shadow(0 2px 4px rgba(0,40,120,.18))}
+.heroicon .beam{transform:translateY(0)}
+.kicker{font-size:13px;font-weight:600;letter-spacing:.01em;background:linear-gradient(90deg,#007aff,#5856d6);-webkit-background-clip:text;background-clip:text;color:transparent;width:max-content}
+h1{font-family:var(--display);font-size:40px;font-weight:700;letter-spacing:-.035em;line-height:1.1;margin:0}
+h2{font-family:var(--display);font-size:19px;font-weight:600;letter-spacing:-.022em;margin:0}
+h3{font-size:15px;font-weight:600;letter-spacing:-.015em;margin:0}
+.sub{margin:6px 0 0;color:var(--muted);font-size:17px;letter-spacing:-.02em;max-width:42em;line-height:1.45;text-wrap:pretty}
+.hint{color:var(--muted);font-size:12.5px;margin:0;line-height:1.55}
+.row{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
+.head{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between}
+.head .desc{flex-basis:100%;margin-top:-4px;padding-left:38px}
+
+/* 標題前的 iOS 設定式圖示 */
+.ttl{display:flex;align-items:center;gap:10px}
+.sym{width:28px;height:28px;border-radius:7px;flex:none;display:grid;place-items:center;color:#fff;background:var(--c,#8e8e93);
+  background-image:linear-gradient(180deg,rgba(255,255,255,.22),rgba(255,255,255,0));box-shadow:inset 0 .5px 0 rgba(255,255,255,.35),0 1px 1.5px rgba(0,0,0,.12)}
+
+/* 分段控制 */
+.tabs{display:inline-flex;align-self:flex-start;background:var(--sunk);border-radius:9px;padding:2px}
+.tabs button{font:inherit;font-size:13.5px;font-weight:500;border:0;background:transparent;color:var(--ink);padding:6px 20px;min-height:32px;border-radius:7px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.tabs button svg{opacity:.7}
+.tabs button[aria-selected="true"]{background:var(--seg-on);font-weight:600;box-shadow:0 3px 8px rgba(0,0,0,.12),0 3px 1px rgba(0,0,0,.04),0 0 0 .5px var(--hair)}
+.tabs button[aria-selected="true"] svg{opacity:1;color:var(--accent)}
+
+/* 群組卡片 */
+.card{background:var(--surface);border-radius:18px;padding:22px 24px;display:flex;flex-direction:column;gap:16px;min-width:0;box-shadow:var(--card-shadow)}
+
+/* 上傳區 */
+.drop{position:relative;border-radius:14px;padding:30px 16px 28px;text-align:center;cursor:pointer;display:flex;flex-direction:column;gap:4px;align-items:center;color:var(--muted);
+  background:radial-gradient(120% 140% at 50% 0%,var(--accent-wash-2),var(--accent-wash) 45%,var(--sunk-2) 100%);box-shadow:inset 0 0 0 .5px var(--accent-wash-2)}
+.drop:hover{box-shadow:inset 0 0 0 1px var(--accent-wash-2)}
+.drop:hover .doc{transform:translateY(-3px) rotate(-1.5deg)}
+.drop.over{box-shadow:inset 0 0 0 2px var(--accent);background:var(--accent-wash-2)}
+.drop .doc{width:132px;height:auto;margin-bottom:12px;filter:drop-shadow(0 8px 14px rgba(0,60,140,.16))}
+.drop strong{color:var(--ink);font-family:var(--display);font-size:19px;font-weight:600;letter-spacing:-.02em}
+.drop span{font-size:13.5px}
+.drop .fake{margin-top:14px;pointer-events:none;color:var(--on-primary)}
 .drop input{position:absolute;width:1px;height:1px;opacity:0}
-.row{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
-.opt{display:inline-flex;gap:6px;align-items:center;color:var(--ink-2);font-size:13px}
-.hint{color:var(--muted);font-size:12.5px;margin:0}
-.btn{font:inherit;font-size:14px;border:1px solid transparent;border-radius:8px;padding:8px 16px;min-height:40px;background:var(--primary);color:var(--on-primary);font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px}
-.btn:hover:not(:disabled){background:var(--primary-hover)}
-.btn.ghost{background:var(--surface);color:var(--ink);font-weight:500;border-color:var(--line-strong)}
-.btn.ghost:hover:not(:disabled){background:var(--sunk)}
-.btn:disabled{opacity:.5;cursor:not-allowed}
-@media (prefers-reduced-motion:no-preference){.btn,.tabs button,.drop,.edit input{transition:background-color .18s ease,border-color .18s ease,color .18s ease}}
-.banner{border-radius:10px;padding:12px 16px;background:var(--warn-wash);color:var(--ink);font-size:14px;border-left:4px solid var(--warn)}
-.banner b{color:var(--warn)}
-.samples{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.status{display:flex;gap:12px;align-items:flex-start;border-radius:12px;padding:16px 18px;border-left:4px solid transparent}
-.status.ok{border-left-color:var(--good)} .status.review{border-left-color:var(--warn)} .status.err{border-left-color:var(--bad)}
-.status.ok{background:var(--good-wash)} .status.review{background:var(--warn-wash)} .status.err{background:var(--bad-wash)}
-.status .icon{font-size:20px;line-height:1.2;font-weight:700}
-.status.ok .icon{color:var(--good)} .status.review .icon{color:var(--warn)} .status.err .icon{color:var(--bad)}
-.status h2{font-size:16px}
-.status ul{margin:6px 0 0;padding-left:18px;color:var(--ink-2)}
-.status .meta{color:var(--ink-2);font-size:12.5px;margin-top:2px}
-.imgs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-figure{margin:0;display:flex;flex-direction:column;gap:6px}
-figure img{width:100%;border-radius:8px;display:block;background:var(--sunk)}
-figcaption{font-size:12.5px;color:var(--ink-2)}
-.mrz{font-family:var(--mono);font-size:15px;letter-spacing:.04em;border:1px solid var(--line);background:var(--sunk);border-radius:8px;padding:12px 14px;overflow-x:auto;white-space:pre;line-height:1.9}
-.mrz .cd{border-radius:3px;padding:0 1px;font-weight:700}
-.mrz .cd.ok{background:var(--good-wash);color:var(--good)}
-.mrz .cd.bad{background:var(--bad-wash);color:var(--bad)}
-.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--ink-2)}
-.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
-.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
-.tbl{overflow-x:auto}
-table{border-collapse:collapse;width:100%;font-size:13px}
-th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
-th{color:var(--muted);font-weight:600;font-size:12px;letter-spacing:.03em;background:var(--page);border-bottom-color:var(--line-strong)}
-tbody tr:last-child td{border-bottom:0}
-td.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
-.pill{display:inline-block;font-size:12px;font-weight:500;border-radius:999px;padding:2px 9px;background:var(--sunk);color:var(--ink-2);white-space:nowrap}
-.pill.ok{background:var(--good-wash);color:var(--good)} .pill.bad{background:var(--bad-wash);color:var(--bad)}
-.pill.warn{background:var(--warn-wash);color:var(--warn)}
-textarea{width:100%;min-height:118px;font-family:var(--mono);font-size:14px;letter-spacing:.04em;border:1px solid var(--line-strong);border-radius:8px;padding:10px 12px;background:var(--surface);color:var(--ink);resize:vertical}
-details{border-top:1px solid var(--line);padding-top:10px}
-summary{cursor:pointer;color:var(--ink-2);font-size:13px}
-pre.raw{font-family:var(--mono);font-size:12px;background:var(--sunk);border-radius:8px;padding:10px;overflow:auto;max-height:340px;margin:8px 0 0}
-.spinner{display:inline-block;width:16px;height:16px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;vertical-align:-3px;margin-right:8px}
-@media (prefers-reduced-motion:no-preference){.spinner{animation:spin .8s linear infinite}}
-@keyframes spin{to{transform:rotate(360deg)}}
-.toolbar{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between}
-.counts{display:flex;flex-wrap:wrap;gap:6px}
-.queue tbody tr{cursor:pointer}
-.queue tbody tr:hover{background:var(--accent-wash)}
-.queue tbody tr[aria-selected="true"]{background:var(--accent-wash);box-shadow:inset 3px 0 0 var(--accent)}
-.queue td{vertical-align:middle}
-.queue img.thumb{width:56px;height:40px;object-fit:cover;border-radius:4px;display:block;background:var(--sunk)}
-.queue .fname{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.btn.small{padding:5px 12px;font-size:13px;min-height:32px}
+
+/* 合成範例：縮圖按鈕 */
+.samples{display:flex;flex-direction:column;gap:10px}
+.samples .hint{font-weight:500}
+.samplegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.sample{font:inherit;text-align:left;border:0;padding:0;border-radius:12px;overflow:hidden;cursor:pointer;background:var(--surface);color:var(--ink);display:flex;flex-direction:column;box-shadow:var(--card-shadow)}
+.sample img{width:100%;aspect-ratio:3/2;object-fit:cover;display:block;background:var(--sunk)}
+.sample span{font-size:12.5px;font-weight:500;padding:8px 10px 9px;display:flex;justify-content:space-between;align-items:center;gap:6px}
+.sample span::after{content:"";width:6px;height:6px;border-right:1.5px solid var(--muted);border-top:1.5px solid var(--muted);transform:rotate(45deg);flex:none;opacity:.6}
+.sample:hover{box-shadow:var(--lift-shadow)}
+
+/* 拍攝建議 */
+.tips{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line);border-radius:12px;overflow:hidden;box-shadow:0 0 0 .5px var(--line)}
+.tips li{display:flex;gap:12px;align-items:flex-start;background:var(--surface);padding:14px 16px;font-size:12.5px;color:var(--muted);line-height:1.5}
+.tips .sym{width:26px;height:26px;border-radius:7px}
+.tips b{display:block;color:var(--ink);font-weight:600;font-size:13.5px;margin-bottom:1px}
+
+/* iOS 開關 */
+.switch{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:14px;color:var(--ink);cursor:pointer;padding:2px 0}
+.switch small{display:block;color:var(--muted);font-size:12px}
+.switch input{appearance:none;-webkit-appearance:none;margin:0;flex:none;width:51px;height:31px;border-radius:999px;background:var(--sunk);position:relative;cursor:pointer}
+.switch input::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 3px 8px rgba(0,0,0,.15),0 3px 1px rgba(0,0,0,.06)}
+.switch input:checked{background:var(--good-solid)}
+.switch input:checked::after{transform:translateX(20px)}
+
+/* 按鈕：主要＝實心藍（帶細微漸層與高光），次要＝淡藍底藍字 */
+.btn{font:inherit;font-size:15px;font-weight:600;letter-spacing:-.01em;border:0;border-radius:12px;padding:10px 20px;min-height:44px;color:var(--on-primary);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  background:linear-gradient(180deg,var(--primary-2),var(--primary));box-shadow:inset 0 .5px 0 rgba(255,255,255,.3),0 1px 2px rgba(0,60,140,.2)}
+.btn:hover:not(:disabled){background:linear-gradient(180deg,var(--primary),var(--primary-hover))}
+.btn:active:not(:disabled){transform:scale(.97)}
+.btn.ghost{background:var(--accent-wash);color:var(--accent);box-shadow:none}
+.btn.ghost:hover:not(:disabled){background:var(--accent-wash-2)}
+.btn.small{min-height:30px;padding:4px 14px;font-size:13.5px;border-radius:999px}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn kbd{background:rgba(255,255,255,.18);color:inherit;box-shadow:none;margin-left:2px}
 @media (pointer:coarse){.btn,.btn.small,.tabs button{min-height:44px}}
-.exportbar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;border-top:1px solid var(--line);padding-top:14px}
-.exportbar label{font-size:13px;color:var(--ink-2);font-weight:500}
-.exportbar select,.exportbar input[type=text]{font:inherit;font-size:14px;border:1px solid var(--line-strong);border-radius:8px;padding:6px 10px;min-height:36px;background:var(--surface);color:var(--ink)}
-.exportbar input[type=text]{width:150px;font-family:var(--mono)}
-.queue input[type=checkbox]{width:18px;height:18px;accent-color:var(--primary);cursor:pointer}
+
+/* 提醒橫幅 */
+.banner{display:flex;gap:12px;align-items:flex-start;border-radius:14px;padding:14px 16px;background:var(--warn-wash);font-size:14px}
+.banner svg{flex:none;color:var(--warn);margin-top:2px}
+.banner b{color:var(--warn)}
+
+/* 狀態摘要 */
+.status{display:flex;gap:14px;align-items:flex-start;border-radius:18px;padding:18px 22px}
+.status.ok{background:var(--good-wash)} .status.review{background:var(--warn-wash)} .status.err{background:var(--bad-wash)}
+.status .icon{flex:none;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:16px;font-weight:700;line-height:1;box-shadow:inset 0 .5px 0 rgba(255,255,255,.35),0 2px 6px rgba(0,0,0,.12)}
+.status.ok .icon{background:var(--good-solid)} .status.review .icon{background:var(--warn-solid)} .status.err .icon{background:var(--bad-solid)}
+.status h2{font-size:17px;line-height:32px}
+.status ul{margin:4px 0 0;padding-left:18px;color:var(--ink-2);font-size:14px}
+.status li::marker{color:var(--muted)}
+.status .meta{color:var(--ink-2);font-size:12.5px;font-variant-numeric:tabular-nums}
+
+.detail-head{display:flex;flex-direction:column;gap:2px;padding-top:20px}
+.detail-head h2{font-size:24px;letter-spacing:-.03em}
+.eyebrow{font-size:12px;font-weight:600;letter-spacing:.04em;color:var(--muted);text-transform:uppercase}
+
+.imgs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+figure{margin:0;display:flex;flex-direction:column;gap:8px}
+figure img{width:100%;border-radius:12px;display:block;background:var(--sunk);box-shadow:0 0 0 .5px var(--hair)}
+figcaption{font-size:12px;color:var(--muted);text-align:center}
+
+/* MRZ：像證件上的那一條，背景帶極淡的防偽紋 */
+.mrz{font-family:var(--mono);font-size:16px;letter-spacing:.12em;color:var(--mrz-ink);border-radius:12px;padding:16px 18px;overflow-x:auto;white-space:pre;line-height:2;
+  background:repeating-radial-gradient(circle at 0 120%,transparent 0 9px,var(--mrz-guilloche) 9px 10px),repeating-radial-gradient(circle at 100% -20%,transparent 0 9px,var(--mrz-guilloche) 9px 10px),var(--mrz-bg);
+  box-shadow:inset 0 0 0 .5px var(--line)}
+.mrz .cd{border-radius:4px;padding:1px 2px;font-weight:700}
+.mrz .cd.ok{background:var(--good-wash);color:var(--good);box-shadow:inset 0 -1.5px 0 var(--good-solid)}
+.mrz .cd.bad{background:var(--bad-wash);color:var(--bad);box-shadow:inset 0 -1.5px 0 var(--bad-solid)}
+.legend{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:12px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+
+/* 表格：iOS 內嵌分組清單——圓角容器＋髮絲分隔線 */
+.tbl{overflow-x:auto;border-radius:12px;box-shadow:inset 0 0 0 .5px var(--line)}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{text-align:left;padding:10px 12px;border-bottom:.5px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:500;font-size:12px;white-space:nowrap;background:var(--sunk-2)}
+tbody tr:last-child td{border-bottom:0}
+td.mono{font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums}
+.pill{display:inline-flex;align-items:center;gap:3px;font-size:11.5px;font-weight:600;border-radius:999px;padding:2px 9px;background:var(--sunk);color:var(--ink-2);white-space:nowrap;letter-spacing:0}
+.pill.ok{background:var(--good-wash);color:var(--good)} .pill.bad{background:var(--bad-wash);color:var(--bad)} .pill.warn{background:var(--warn-wash);color:var(--warn)}
+.tag{display:inline-block;font-size:12px;font-weight:500;border-radius:6px;padding:1px 7px;white-space:nowrap}
+.tag.bad{background:var(--bad-wash);color:var(--bad)} .tag.warn{background:var(--warn-wash);color:var(--warn)} .tag.edited{background:var(--accent-wash);color:var(--accent)}
+
+textarea{width:100%;min-height:124px;font-family:var(--mono);font-size:15px;letter-spacing:.08em;border:0;border-radius:12px;padding:14px 16px;background:var(--sunk-2);color:var(--ink);resize:vertical;line-height:1.75;box-shadow:inset 0 0 0 .5px var(--line)}
+textarea:focus{outline:0;background:var(--surface);box-shadow:inset 0 0 0 1px var(--accent),0 0 0 4px var(--accent-wash)}
+details{border-top:.5px solid var(--line);padding-top:12px}
+summary{cursor:pointer;color:var(--accent);font-size:13.5px;font-weight:500;list-style:none;display:flex;align-items:center;gap:6px}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"";width:6px;height:6px;border-right:1.6px solid currentColor;border-bottom:1.6px solid currentColor;transform:rotate(-45deg);margin:0 3px 0 1px}
+details[open] > summary::before{transform:rotate(45deg)}
+pre.raw{font-family:var(--mono);font-size:12px;background:var(--sunk-2);border-radius:10px;padding:12px;overflow:auto;max-height:340px;margin:10px 0 0;box-shadow:inset 0 0 0 .5px var(--line)}
+details .hint{margin-top:8px;line-height:1.7}
+/* iOS 活動指示器 */
+.spinner{display:inline-block;width:14px;height:14px;border-radius:50%;vertical-align:-2px;margin-right:6px;
+  background:conic-gradient(from 0deg,transparent 0 10%,var(--muted) 100%);-webkit-mask:radial-gradient(circle,transparent 4px,#000 4.5px);mask:radial-gradient(circle,transparent 4px,#000 4.5px)}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* 暫存區：摘要小卡 */
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.stat{border-radius:14px;padding:12px 14px;background:var(--sunk-2);box-shadow:inset 0 0 0 .5px var(--line);display:flex;flex-direction:column;gap:2px}
+.stat b{font-family:var(--display);font-size:26px;font-weight:600;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1.1}
+.stat span{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.stat span::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--dot,var(--muted))}
+.stat.ok{--dot:var(--good-solid)} .stat.warn{--dot:var(--warn-solid)} .stat.bad{--dot:var(--bad-solid)} .stat.all{--dot:var(--accent)}
+.queue tbody tr{cursor:pointer}
+.queue tbody tr:hover{background:var(--sunk-2)}
+.queue tbody tr[aria-selected="true"]{background:var(--accent-wash)}
+.queue td{vertical-align:middle}
+.queue img.thumb{width:60px;height:42px;object-fit:cover;border-radius:8px;display:block;background:var(--sunk);box-shadow:0 0 0 .5px var(--hair)}
+.queue .fname{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+input[type=checkbox]{accent-color:var(--accent)}
+.queue input[type=checkbox]{width:18px;height:18px;cursor:pointer}
 .confirmed{font-size:11px;color:var(--good);display:block}
-.qlist{list-style:none;margin:0;padding:0;display:grid;gap:6px}
-.qlist li{display:flex;gap:10px;align-items:baseline}
-.qlist .ic{width:18px;flex:none;font-weight:700;text-align:center}
-.qlist .ok .ic{color:var(--good)} .qlist .warn .ic{color:var(--warn)} .qlist .fail .ic{color:var(--bad)}
-.qlist b{font-weight:600;min-width:64px;display:inline-block}
+
+/* 照片檢查清單 */
+.qlist{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px}
+.qlist li{display:flex;gap:10px;align-items:baseline;padding:9px 0;border-bottom:.5px solid var(--line);font-size:14px;color:var(--ink-2)}
+.qlist .ic{width:18px;height:18px;flex:none;border-radius:50%;display:inline-grid;place-items:center;font-size:10.5px;font-weight:800;color:#fff;align-self:center}
+.qlist .ok .ic{background:var(--good-solid)} .qlist .warn .ic{background:var(--warn-solid)} .qlist .fail .ic{background:var(--bad-solid)}
+.qlist b{font-weight:600;min-width:64px;display:inline-block;color:var(--ink)}
+
+/* 資料預覽與修改 */
 .edit td{padding:4px;vertical-align:middle;position:relative}
-.edit th,.log th,.queue th{white-space:nowrap}
-#editArea{display:flex;flex-direction:column;gap:10px;margin-top:8px;padding-top:18px;border-top:1px solid var(--line)}
-#editArea h2:not(:first-child){margin-top:12px}
 table.edit,table.log{width:max-content;min-width:100%}
-.edit input{font:inherit;font-family:var(--mono);font-size:13px;width:100%;min-width:9ch;border:1px solid transparent;border-radius:6px;padding:5px 7px;min-height:32px;background:transparent;color:var(--ink)}
-.edit input:hover{border-color:var(--line)}
-.edit input:focus{background:var(--surface);border-color:var(--accent)}
+.edit input{font:inherit;font-family:var(--mono);font-size:13px;width:100%;min-width:9ch;border:1px solid transparent;border-radius:8px;padding:5px 8px;min-height:32px;background:transparent;color:var(--ink)}
+.edit input:hover{background:var(--sunk-2)}
+.edit input:focus{background:var(--surface);border-color:var(--accent);outline:0;box-shadow:0 0 0 4px var(--accent-wash)}
 .edit td.bad input{background:var(--bad-wash);border-color:var(--bad)}
 .edit td.warn input{background:var(--warn-wash);border-color:var(--warn)}
 .edit td.edited input{background:var(--accent-wash);border-color:var(--accent)}
 .edit td.invalid input{background:var(--bad-wash);border-color:var(--bad);border-style:dashed}
 /* 狀態不只靠顏色：格子右上角另有符號（! 問題、? 待確認、✎ 已修改、✕ 格式不對） */
 .edit td.bad input,.edit td.warn input,.edit td.edited input,.edit td.invalid input{padding-right:22px}
-.edit td.bad::after,.edit td.warn::after,.edit td.edited::after,.edit td.invalid::after{position:absolute;right:9px;top:50%;transform:translateY(-50%);font:700 11px/1 var(--sans);pointer-events:none}
+.edit td.bad::after,.edit td.warn::after,.edit td.edited::after,.edit td.invalid::after{position:absolute;right:10px;top:50%;transform:translateY(-50%);font:700 11px/1 var(--sans);pointer-events:none}
 .edit td.bad::after{content:"!";color:var(--bad)}
 .edit td.warn::after{content:"?";color:var(--warn)}
 .edit td.edited::after{content:"✎";color:var(--accent)}
 .edit td.invalid::after{content:"✕";color:var(--bad)}
 .edit tr.off{opacity:.45}
-.edit .fname{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px}
+.edit .fname,.log .fname{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px}
 .log td{font-size:12.5px}
 .log .mono{white-space:nowrap}
-.tag{display:inline-block;font-size:12px;font-weight:500;border-radius:4px;padding:1px 6px;white-space:nowrap}
-.tag.bad{background:var(--bad-wash);color:var(--bad)} .tag.warn{background:var(--warn-wash);color:var(--warn)}
-.tag.edited{background:var(--accent-wash);color:var(--accent)}
+.legendtags{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--muted)}
 
-/* ===== Apple 風格（依 apple-ui-designer：iOS 原生、分組、無邊框、系統字型）：元件規則 ===== */
-body{font-size:15px;letter-spacing:-.01em;-webkit-font-smoothing:antialiased}
-/* 導覽列：半透明＋模糊，固定在上方 */
-.topbar{position:sticky;top:0;z-index:10;background:var(--topbar);color:var(--ink);border-bottom:.5px solid var(--line);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px)}
-.topbar .inner{justify-content:center;font-weight:600;font-size:15px;padding:12px 16px;letter-spacing:-.02em}
-.topbar svg,.topbar .tag{display:none}
-.wrap{max-width:1080px;gap:22px;padding-block:20px 80px}
-/* 大標題 */
-h1{font-size:34px;font-weight:700;letter-spacing:-.03em;line-height:1.15}
-.sub{color:var(--muted);font-size:15px}
-h2{font-size:20px;font-weight:600;letter-spacing:-.02em;text-transform:none;color:var(--ink)}
-/* 分段控制 */
-.tabs{background:var(--sunk);border-radius:9px;padding:2px;gap:0;border:0}
-.tabs button{border-radius:7px;padding:6px 18px;min-height:32px;font-size:13.5px;font-weight:500;color:var(--ink);border:0}
-.tabs button[aria-selected="true"]{background:var(--surface)!important;font-weight:600;box-shadow:0 3px 8px rgba(0,0,0,.12),0 3px 1px rgba(0,0,0,.04)!important}
-@media (prefers-color-scheme:dark){.tabs button[aria-selected="true"]{background:#636366!important}}
-/* 群組卡片：不用邊框，靠間距與分組 */
-.card{border:0;border-radius:14px;padding:20px;gap:16px;box-shadow:none}
-.drop{border:0;border-radius:12px;background:var(--accent-wash);color:var(--ink-2);padding:30px 16px}
-.drop svg{color:var(--accent)}
-.drop strong{font-weight:600;font-size:17px}
-.drop:hover{background:rgba(0,122,255,.14)}
-/* 按鈕：主要＝實心藍，次要＝淡藍底藍字 */
-.btn{border:0;border-radius:10px;font-weight:600;font-size:15px;min-height:44px;padding:10px 20px;letter-spacing:-.01em}
-.btn.small{min-height:32px;padding:5px 14px;font-size:14px;border-radius:999px}
-.btn.ghost{background:var(--accent-wash);color:var(--accent)}
-.btn.ghost:hover:not(:disabled){background:rgba(0,122,255,.16)}
-.btn:disabled{opacity:.35}
-/* 表格：iOS 清單節奏，只用細分隔線 */
-th{background:transparent;border-bottom:.5px solid var(--line);color:var(--muted);font-weight:400;font-size:13px;text-transform:none;letter-spacing:0}
-td{border-bottom:.5px solid var(--line)}
-.queue tbody tr[aria-selected="true"]{background:var(--accent-wash);box-shadow:none}
-.queue tbody tr:hover{background:var(--sunk)}
-.queue img.thumb{border-radius:8px}
-.pill{border:0;border-radius:999px;font-weight:500;padding:2px 10px}
-.tag{border-radius:6px}
-/* 狀態：柔和底色，不用側邊色條 */
-.status{border:0;border-radius:14px;padding:16px 18px}
-.status.ok{background:var(--good-wash)!important} .status.review{background:var(--warn-wash)!important} .status.err{background:var(--bad-wash)!important}
-.banner{border:0;border-radius:14px;background:var(--warn-wash)}
-.exportbar,#editArea{border-top:.5px solid var(--line)}
-.exportbar select,.exportbar input[type=text],textarea{border:0;background:var(--sunk);border-radius:10px}
-.edit input{border-radius:8px}
-.mrz{border:0;border-radius:12px}
-input[type=checkbox]{accent-color:var(--accent)}
-:focus-visible{outline:3px solid rgba(0,122,255,.5);outline-offset:1px}
+/* 匯出 */
+.exportbar{display:flex;flex-wrap:wrap;gap:10px 12px;align-items:center}
+.field{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--ink-2)}
+.exportbar select,.exportbar input[type=text]{font:inherit;font-size:14px;border:0;border-radius:9px;padding:6px 10px;min-height:34px;background:var(--sunk);color:var(--ink)}
+.exportbar input[type=text]{width:150px;font-family:var(--mono)}
+
+footer{max-width:1080px;margin:0 auto;padding:0 16px 48px;display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 16px;font-size:12px;color:var(--muted);border-top:.5px solid var(--line);padding-top:18px}
+
+:focus-visible{outline:3px solid rgba(0,122,255,.45);outline-offset:2px}
+.edit input:focus-visible,textarea:focus-visible{outline:0}
 @media (prefers-reduced-motion:no-preference){
-  #result > *{animation:appleIn .28s cubic-bezier(.2,.8,.2,1)}
+  .btn,.tabs button,.drop,.drop .doc,.sample,.edit input,.switch input,.switch input::after,.appearance button,textarea{transition:background-color .2s ease,color .2s ease,box-shadow .2s ease,transform .25s cubic-bezier(.2,.8,.2,1)}
+  .sample:hover{transform:translateY(-2px)}
+  .heroicon .beam{animation:scan 3.2s cubic-bezier(.45,0,.55,1) infinite alternate}
+  .spinner{animation:spin .9s steps(12) infinite}
+  #result > *{animation:appleIn .32s cubic-bezier(.2,.8,.2,1) both}
+  #result > *:nth-child(2){animation-delay:.04s} #result > *:nth-child(3){animation-delay:.08s} #result > *:nth-child(4){animation-delay:.12s} #result > *:nth-child(n+5){animation-delay:.16s}
 }
-@keyframes appleIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-@media (max-width:760px){.card{padding:16px}.wrap{padding-block:28px 64px}.imgs,.grid2{grid-template-columns:minmax(0,1fr)}.queue .fname{max-width:120px}}
+@keyframes scan{from{transform:translateY(-24px)}to{transform:translateY(16px)}}
+@keyframes appleIn{from{opacity:0;transform:translateY(8px) scale(.995)}to{opacity:1;transform:none}}
+@media (max-width:760px){
+  h1{font-size:32px}
+  header.hero{gap:14px;align-items:flex-start}
+  .heroicon{width:64px;height:64px}
+  .sub{font-size:15.5px}
+  .card{padding:16px;border-radius:16px}
+  .imgs,.grid2,.qlist,.tips{grid-template-columns:minmax(0,1fr)}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .head .desc{padding-left:0}
+  .queue .fname{max-width:120px}
+  .chip .long,.appearance .lbl,.btn kbd{display:none}
+}
 </style>
 </head>
 <body>
 <div class="topbar"><div class="inner">
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M15 8h2M15 12h2M7 16h10"/></svg>
-  <span>MRZ 證件辨識</span><span class="tag">ICAO 9303・TD3／TD1</span>
+  <div class="brand">
+    <span class="appicon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="2"/><path d="M14.5 9h3M14.5 12h3M7 16h10"/></svg></span>
+    <span>MRZ 證件辨識</span>
+  </div>
+  <span class="chip" id="modeChip"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span id="modeText">本機處理<span class="long">・照片不存檔</span></span></span>
+  <div class="appearance" role="group" aria-label="外觀">
+    <button type="button" data-theme-set="auto" aria-pressed="true" title="跟隨系統"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg><span class="lbl">自動</span></button>
+    <button type="button" data-theme-set="light" aria-pressed="false" title="淺色"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><span class="lbl">淺色</span></button>
+    <button type="button" data-theme-set="dark" aria-pressed="false" title="深色"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><span class="lbl">深色</span></button>
+  </div>
 </div></div>
 <div class="wrap">
-  <header>
-    <h1>證件辨識驗證</h1>
-    <p class="sub" id="subtitle">上傳護照或居留證照片，檢查這套流程能不能讀對。只在這台電腦上處理，照片不會存檔。</p>
+  <header class="hero">
+    <svg class="heroicon" viewBox="0 0 120 120" role="img" aria-label="證件辨識圖示">
+      <defs>
+        <linearGradient id="hiBg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#64d2ff"/><stop offset=".45" stop-color="#0a84ff"/><stop offset="1" stop-color="#5e5ce6"/></linearGradient>
+        <linearGradient id="hiGloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".38"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></linearGradient>
+        <linearGradient id="hiBeam" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5df2c6" stop-opacity="0"/><stop offset=".5" stop-color="#5df2c6" stop-opacity=".55"/><stop offset="1" stop-color="#5df2c6" stop-opacity="0"/></linearGradient>
+        <filter id="hiShadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#001a4d" flood-opacity=".28"/></filter>
+        <clipPath id="hiTile"><rect width="120" height="120" rx="27"/></clipPath>
+        <clipPath id="hiCard"><rect x="22" y="30" width="76" height="56" rx="7"/></clipPath>
+      </defs>
+      <rect width="120" height="120" rx="27" fill="url(#hiBg)"/>
+      <g clip-path="url(#hiTile)"><circle cx="96" cy="18" r="34" fill="#fff" opacity=".08"/><circle cx="20" cy="112" r="40" fill="#001a4d" opacity=".10"/></g>
+      <g filter="url(#hiShadow)" transform="rotate(-6 60 58)">
+        <rect x="22" y="30" width="76" height="56" rx="7" fill="#fff"/>
+        <rect x="29" y="37" width="17" height="21" rx="3" fill="#dbe8ff"/>
+        <circle cx="37.5" cy="45" r="4" fill="#9dbcf2"/><path d="M31 58c1-4.5 3.6-6.5 6.5-6.5s5.5 2 6.5 6.5z" fill="#9dbcf2"/>
+        <rect x="51" y="38" width="38" height="3.2" rx="1.6" fill="#e3e3ea"/><rect x="51" y="45" width="28" height="3.2" rx="1.6" fill="#e3e3ea"/><rect x="51" y="52" width="33" height="3.2" rx="1.6" fill="#e3e3ea"/>
+        <g fill="#1d3f7a">
+          <rect x="29" y="66" width="3" height="4" rx=".6"/><rect x="33.5" y="66" width="3" height="4" rx=".6"/><rect x="38" y="66" width="3" height="4" rx=".6"/><rect x="42.5" y="66" width="3" height="4" rx=".6"/><rect x="47" y="66" width="3" height="4" rx=".6"/><rect x="51.5" y="66" width="3" height="4" rx=".6"/><rect x="56" y="66" width="3" height="4" rx=".6"/><rect x="60.5" y="66" width="3" height="4" rx=".6"/>
+          <path d="M66 68h25" stroke="#1d3f7a" stroke-width="1.6" stroke-dasharray="2.2 2.3"/>
+          <rect x="29" y="74" width="3" height="4" rx=".6"/><rect x="33.5" y="74" width="3" height="4" rx=".6"/><rect x="38" y="74" width="3" height="4" rx=".6"/><rect x="42.5" y="74" width="3" height="4" rx=".6"/><rect x="47" y="74" width="3" height="4" rx=".6"/><rect x="51.5" y="74" width="3" height="4" rx=".6"/><rect x="56" y="74" width="3" height="4" rx=".6"/><rect x="60.5" y="74" width="3" height="4" rx=".6"/><rect x="65" y="74" width="3" height="4" rx=".6"/><rect x="69.5" y="74" width="3" height="4" rx=".6"/>
+          <rect x="85" y="74" width="5" height="4" rx=".8" fill="#34c759"/>
+        </g>
+        <g clip-path="url(#hiCard)"><g class="beam"><rect x="22" y="52" width="76" height="16" fill="url(#hiBeam)"/><rect x="22" y="59.5" width="76" height="1.2" fill="#5df2c6"/></g></g>
+      </g>
+      <path d="M14 30V20a6 6 0 0 1 6-6h10M90 14h10a6 6 0 0 1 6 6v10M106 90v10a6 6 0 0 1-6 6H90M30 106H20a6 6 0 0 1-6-6V90" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".92"/>
+      <rect width="120" height="120" rx="27" fill="url(#hiGloss)"/>
+      <rect x=".5" y=".5" width="119" height="119" rx="26.5" fill="none" stroke="#fff" stroke-opacity=".25"/>
+    </svg>
+    <div>
+      <span class="kicker">ICAO 9303・護照 TD3／卡片 TD1</span>
+      <h1>證件辨識驗證</h1>
+      <p class="sub" id="subtitle">上傳護照或居留證照片，檢查這套流程能不能讀對。只在這台電腦上處理，照片不會存檔。</p>
+    </div>
   </header>
   <div class="banner" id="cloudBanner" hidden>
-    <b>展示用網站，請勿上傳真實證件。</b>照片會傳到雲端伺服器處理（只在記憶體中、不儲存），但仍屬於把個資交給第三方。
-    請用下方的合成範例圖試用；真實證件請在本機或公司內部部署的版本處理。
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+    <div><b>展示用網站，請勿上傳真實證件。</b>照片會傳到雲端伺服器處理（只在記憶體中、不儲存），但仍屬於把個資交給第三方。
+    請用下方的合成範例圖試用；真實證件請在本機或公司內部部署的版本處理。</div>
   </div>
 
   <div class="tabs" role="tablist">
-    <button role="tab" id="tab-photo" aria-selected="true" aria-controls="panel-photo">照片辨識</button>
-    <button role="tab" id="tab-text" aria-selected="false" aria-controls="panel-text">手動輸入 MRZ</button>
+    <button role="tab" id="tab-photo" aria-selected="true" aria-controls="panel-photo"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/></svg>照片辨識</button>
+    <button role="tab" id="tab-text" aria-selected="false" aria-controls="panel-text"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 15h10"/></svg>手動輸入 MRZ</button>
   </div>
 
-  <section id="panel-photo" role="tabpanel" aria-labelledby="tab-photo" class="card">
-    <label class="drop" id="drop">
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg>
-      <strong>拖曳照片到這裡，或點一下選擇檔案（可一次選多張）</strong>
-      <span>JPG、PNG、WebP；護照拍資料頁，居留證拍背面（有三行 MRZ 的那面）</span>
-      <input type="file" id="file" multiple accept="image/jpeg,image/png,image/webp,image/bmp">
-    </label>
-    <div class="samples" id="samples" hidden>
-      <span class="hint">試用合成範例：</span>
-    </div>
-    <div class="row">
-      <label class="opt"><input type="checkbox" id="synth"> 用合成版面抽取視覺區（只適用 synth/ 產生的圖）</label>
-    </div>
-    <p class="hint">每張照片會先檢查能不能用（約 1 秒），再辨識（約 3～15 秒）。拍攝建議：MRZ（底部兩三行英數字）清楚、不反光；證件可以歪斜或旋轉，護照可以整本打開拍。</p>
-    <div id="batch" hidden>
-      <div class="toolbar">
-        <div><h2>暫存區</h2></div>
-        <div class="counts" id="counts" aria-live="polite"></div>
-        <button class="btn ghost small" id="clearAll">清除全部</button>
+  <div id="panel-photo" role="tabpanel" aria-labelledby="tab-photo" class="stack">
+    <section class="card">
+      <label class="drop" id="drop">
+        <svg class="doc" viewBox="0 0 132 92" aria-hidden="true">
+          <defs><linearGradient id="badge" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5ab0ff"/><stop offset="1" stop-color="#0071e3"/></linearGradient></defs>
+          <rect x="2" y="6" width="120" height="84" rx="9" fill="#fff" stroke="rgba(0,0,0,.08)"/>
+          <rect x="11" y="16" width="24" height="30" rx="4" fill="#e8f0fd"/>
+          <circle cx="23" cy="27" r="5.5" fill="#b8cdf3"/><path d="M14 46c1.5-6 5-9 9-9s7.5 3 9 9z" fill="#b8cdf3"/>
+          <rect x="43" y="17" width="52" height="4" rx="2" fill="#e5e5ea"/><rect x="43" y="26" width="38" height="4" rx="2" fill="#e5e5ea"/>
+          <rect x="43" y="35" width="46" height="4" rx="2" fill="#e5e5ea"/><rect x="43" y="44" width="28" height="4" rx="2" fill="#e5e5ea"/>
+          <rect x="7" y="57" width="110" height="27" rx="5" fill="rgba(0,122,255,.08)" stroke="#007aff" stroke-width="1" stroke-dasharray="3 2"/>
+          <text x="12" y="68" font-family="ui-monospace,Menlo,monospace" font-size="6.6" letter-spacing=".5" fill="#0a5cc2">P&lt;TWNLIN&lt;&lt;MAY&lt;LEE&lt;&lt;&lt;&lt;</text>
+          <text x="12" y="79" font-family="ui-monospace,Menlo,monospace" font-size="6.6" letter-spacing=".5" fill="#0a5cc2">X1234567&lt;8TWN9001011F6</text>
+          <circle cx="118" cy="14" r="12" fill="url(#badge)"/>
+          <path d="M118 20v-11M113.5 13.5 118 9l4.5 4.5" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <strong>拖曳照片到這裡</strong>
+        <span>也可以 <kbd>⌘</kbd> <kbd>V</kbd> 貼上，或點一下選擇・可一次多張・JPG、PNG、WebP</span>
+        <span>護照拍資料頁，居留證拍背面（有三行 MRZ 的那面）</span>
+        <span class="btn small fake">選擇照片</span>
+        <input type="file" id="file" multiple accept="image/jpeg,image/png,image/webp,image/bmp">
+      </label>
+      <div class="samples" id="samples" hidden>
+        <span class="hint">沒有照片？試用合成範例</span>
+        <div class="samplegrid" id="sampleGrid"></div>
       </div>
-      <div class="tbl"><table class="queue">
-        <thead><tr><th title="勾選的會匯出">匯出</th><th></th><th>檔名</th><th>照片檢查</th><th>辨識結果</th><th>姓名</th><th>證件號碼</th><th></th></tr></thead>
-        <tbody id="queueBody"></tbody>
-      </table></div>
-      <p class="hint">免複核的預設勾選；需複核的請看過詳細結果、確認無誤後再勾選（會記為已人工確認）。建議重拍與失敗的不能匯出。</p>
-      <div id="editArea" hidden>
-        <h2>資料預覽與修改</h2>
-        <p class="hint">這就是匯出的內容，每一格都可以直接修改（按 Enter 或點別處即儲存）。
-          <span class="tag bad">! 紅框</span> 系統發現問題，必須確認；<span class="tag warn">? 黃框</span> 不尋常或無法自動驗證，請目視確認；<span class="tag edited">✎ 標記</span> 已人工修改；<span class="tag bad">✕ 虛線</span> 格式不對。滑鼠移到格子上可看原因。</p>
+      <ul class="tips">
+        <li><span class="sym" data-sym="timer" style="--c:#007aff"></span><div><b>先檢查、再辨識</b>照片檢查約 1 秒，辨識約 3～15 秒</div></li>
+        <li><span class="sym" data-sym="lines" style="--c:#5856d6"></span><div><b>MRZ 要清楚</b>底部兩三行英數字對焦清楚、不反光</div></li>
+        <li><span class="sym" data-sym="rotate" style="--c:#34c759"></span><div><b>角度不拘</b>證件可以歪斜或旋轉，護照可以整本打開拍</div></li>
+      </ul>
+      <label class="switch"><span>用合成版面抽取視覺區<small>只適用 synth/ 產生的圖</small></span><input type="checkbox" id="synth" role="switch"></label>
+    </section>
+
+    <div id="batch" class="stack" hidden>
+      <section class="card">
+        <div class="head">
+          <h2 class="ttl"><span class="sym" data-sym="tray" style="--c:#007aff"></span>暫存區</h2>
+          <button class="btn ghost small" id="clearAll">清除全部</button>
+          <p class="hint desc">點一列看詳細結果。免複核的預設勾選；需複核的請看過詳細結果、確認無誤後再勾選（會記為已人工確認）。建議重拍與失敗的不能匯出。</p>
+        </div>
+        <div class="stats" id="counts" aria-live="polite"></div>
+        <div class="tbl"><table class="queue">
+          <thead><tr><th title="勾選的會匯出">匯出</th><th></th><th>檔名</th><th>照片檢查</th><th>辨識結果</th><th>姓名</th><th>證件號碼</th><th></th></tr></thead>
+          <tbody id="queueBody"></tbody>
+        </table></div>
+      </section>
+
+      <section class="card" id="editArea" hidden>
+        <div class="head">
+          <h2 class="ttl"><span class="sym" data-sym="pencil" style="--c:#ff9500"></span>資料預覽與修改</h2>
+          <p class="hint desc">這就是匯出的內容，每一格都可以直接修改（按 Enter 或點別處即儲存）。滑鼠移到格子上可看原因。</p>
+        </div>
+        <div class="legendtags">
+          <span><span class="tag bad">! 紅框</span> 系統發現問題，必須確認</span>
+          <span><span class="tag warn">? 黃框</span> 不尋常或無法自動驗證</span>
+          <span><span class="tag edited">✎ 標記</span> 已人工修改</span>
+          <span><span class="tag bad">✕ 虛線</span> 格式不對</span>
+        </div>
         <div class="tbl"><table class="edit"><thead id="editHead"></thead><tbody id="editBody"></tbody></table></div>
-        <h2>注意事項與修改紀錄</h2>
-        <p class="hint">列出每一筆系統發現的差異，以及哪些欄位由人工修改（原值 → 新值、時間）。匯出 SQL 時修改紀錄會一起寫入「資料表名稱_changes」。</p>
+        <div class="head" style="margin-top:10px">
+          <h3 class="ttl"><span class="sym" data-sym="clock" style="--c:#8e8e93"></span>注意事項與修改紀錄</h3>
+          <button class="btn ghost small" id="exportLog" disabled>下載修改紀錄 CSV</button>
+          <p class="hint desc">每一筆系統發現的差異，以及哪些欄位由人工修改（原值 → 新值、時間）。匯出 SQL 時修改紀錄會一起寫入「資料表名稱_changes」。</p>
+        </div>
         <div class="tbl"><table class="log"><thead><tr><th>檔名</th><th>欄位</th><th>系統提示</th><th>系統讀值</th><th>視覺區讀值</th><th>人工修改</th><th>修改時間</th></tr></thead><tbody id="logBody"></tbody></table></div>
-        <div class="row"><button class="btn ghost small" id="exportLog" disabled>下載修改紀錄 CSV</button></div>
-      </div>
-      <div class="exportbar">
-        <label for="dialect">資料庫</label>
-        <select id="dialect">
-          <option value="postgresql">PostgreSQL</option>
-          <option value="mysql">MySQL</option>
-          <option value="sqlserver">SQL Server</option>
-          <option value="sqlite">SQLite</option>
-        </select>
-        <label for="tableName">資料表</label>
-        <input type="text" id="tableName" value="id_documents" spellcheck="false" autocomplete="off">
-        <button class="btn small" id="exportSql" disabled>匯出 SQL</button>
-        <button class="btn ghost small" id="exportCsv" disabled>匯出 CSV</button>
-        <span class="hint" id="exportHint"></span>
-      </div>
-      <p class="hint">SQL 檔要用查詢工具執行：pgAdmin 請用 <b>Query Tool</b> 開啟檔案後按執行（F5），<b>不要用 Restore</b>（Restore 只接受 pg_dump 備份檔）；MySQL 用 Workbench 或 <code>mysql &lt; 檔案</code>；SQL Server 用 SSMS。資料表不存在會自動建立，已存在就直接寫入；同一張照片重複匯入會更新，不會重複新增。結果只保留在這個瀏覽器分頁，重新整理就會清除；匯出的檔案含個人資料，請妥善保管。</p>
+      </section>
+
+      <section class="card">
+        <h2 class="ttl"><span class="sym" data-sym="share" style="--c:#34c759"></span>匯出</h2>
+        <div class="exportbar">
+          <label class="field" for="dialect">資料庫
+            <select id="dialect">
+              <option value="postgresql">PostgreSQL</option>
+              <option value="mysql">MySQL</option>
+              <option value="sqlserver">SQL Server</option>
+              <option value="sqlite">SQLite</option>
+            </select></label>
+          <label class="field" for="tableName">資料表
+            <input type="text" id="tableName" value="id_documents" spellcheck="false" autocomplete="off"></label>
+          <button class="btn small" id="exportSql" disabled>匯出 SQL</button>
+          <button class="btn ghost small" id="exportCsv" disabled>匯出 CSV</button>
+          <span class="hint" id="exportHint"></span>
+        </div>
+        <details><summary>SQL 檔怎麼匯入？</summary>
+          <p class="hint">SQL 檔要用查詢工具執行：pgAdmin 請用 <b>Query Tool</b> 開啟檔案後按執行（F5），<b>不要用 Restore</b>（Restore 只接受 pg_dump 備份檔）；MySQL 用 Workbench 或 <code>mysql &lt; 檔案</code>；SQL Server 用 SSMS。資料表不存在會自動建立，已存在就直接寫入；同一張照片重複匯入會更新，不會重複新增。</p>
+        </details>
+        <p class="hint">結果只保留在這個瀏覽器分頁，重新整理就會清除；匯出的檔案含個人資料，請妥善保管。</p>
+      </section>
     </div>
-  </section>
+  </div>
 
   <section id="panel-text" role="tabpanel" aria-labelledby="tab-text" class="card" hidden>
-    <label for="mrzText"><h2>貼上 MRZ</h2></label>
-    <textarea id="mrzText" spellcheck="false" autocomplete="off" placeholder="護照 2 行 × 44 字元，或卡片 3 行 × 30 字元（空白會自動略過）"></textarea>
-    <div class="row">
-      <button class="btn" id="verify">驗證檢查碼</button>
-      <span class="hint">範例：</span>
-      <button class="btn ghost" data-ex="icao">ICAO 護照樣本</button>
-      <button class="btn ghost" data-ex="gold">就業金卡樣張</button>
-      <button class="btn ghost" data-ex="arc">居留證樣張</button>
+    <div class="head">
+      <label for="mrzText"><h2 class="ttl"><span class="sym" data-sym="lines" style="--c:#5856d6"></span>貼上 MRZ</h2></label>
+      <p class="hint desc">護照 2 行 × 44 字元，或卡片 3 行 × 30 字元；會顯示每個檢查碼「印的」和「依資料算出應為」的值。</p>
     </div>
-    <p class="hint">會顯示每個檢查碼「印的」和「依資料算出應為」的值。兩張移民署樣張的總檢查碼都與 ICAO 公式不符（居留證樣張印 8、算得 3），請用真實卡片確認。</p>
+    <textarea id="mrzText" spellcheck="false" autocomplete="off" placeholder="P&lt;UTOERIKSSON&lt;&lt;ANNA&lt;MARIA&lt;&lt;&lt;…（空白會自動略過）"></textarea>
+    <div class="row">
+      <button class="btn" id="verify">驗證檢查碼 <kbd>⌘</kbd><kbd>↵</kbd></button>
+      <span class="hint">範例</span>
+      <button class="btn ghost small" data-ex="icao">ICAO 護照樣本</button>
+      <button class="btn ghost small" data-ex="gold">就業金卡樣張</button>
+      <button class="btn ghost small" data-ex="arc">居留證樣張</button>
+    </div>
+    <p class="hint">兩張移民署樣張的總檢查碼都與 ICAO 公式不符（居留證樣張印 8、算得 3），請用真實卡片確認。</p>
   </section>
 
-  <div id="result" aria-live="polite"></div>
+  <div id="result" class="stack" aria-live="polite"></div>
 </div>
+<footer>
+  <span>MRZ 為準：ICAO 檢查碼驗證・視覺區只做交叉比對</span>
+  <span id="footNote">照片只在這台電腦上處理，不會存檔</span>
+</footer>
 
 <script>
 const $ = s => document.querySelector(s);
@@ -301,6 +483,36 @@ const FIELD = {surname:"姓", given_names:"名", nationality:"國籍", sex:"性�
   authority:"簽發機關", personal_number:"個人號碼", arc_number:"統一證號", name_native:"原文姓名",
   valid_from:"居留起日", valid_until:"居留期限", employer:"雇主", purpose:"居留事由", middle_name:"中間名"};
 const SRC = {mrz:"MRZ", viz:"視覺區", "mrz+viz":"MRZ＋視覺區"};
+
+// ---- 標題前的 iOS 設定式圖示 ----
+const SYM = {
+  tray: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1z"/>',
+  pencil: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  share: '<path d="M12 3v12"/><path d="m8 7 4-4 4 4"/><path d="M20 14v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-5"/>',
+  photo: '<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/>',
+  lines: '<path d="M4 8h16M4 12h16M4 16h11"/>',
+  list: '<path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01"/>',
+  check: '<circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/>',
+  home: '<path d="M3 11 12 4l9 7v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 21v-6h6v6"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  timer: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/>',
+  rotate: '<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>',
+};
+const symSvg = n => `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${SYM[n]}</svg>`;
+const ttl = (n, c, text, tag = "h2") => `<${tag} class="ttl"><span class="sym" style="--c:${c}">${symSvg(n)}</span>${text}</${tag}>`;
+for (const el of document.querySelectorAll("[data-sym]")) el.innerHTML = symSvg(el.dataset.sym);
+
+// ---- 外觀：自動／淺色／深色（只存在這個瀏覽器） ----
+function applyTheme(t) {
+  if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+  else delete document.documentElement.dataset.theme;
+  for (const b of document.querySelectorAll("[data-theme-set]")) b.setAttribute("aria-pressed", String(b.dataset.themeSet === (t || "auto")));
+}
+try { applyTheme(localStorage.getItem("theme")); } catch (e) {}
+for (const b of document.querySelectorAll("[data-theme-set]")) b.addEventListener("click", () => {
+  applyTheme(b.dataset.themeSet);
+  try { localStorage.setItem("theme", b.dataset.themeSet); } catch (e) {}
+});
 
 // ---- tabs ----
 for (const t of document.querySelectorAll('[role="tab"]')) {
@@ -339,7 +551,7 @@ function parsedTable(m) {
 }
 function mrzSection(m) {
   const fmt = m.format === "TD1" ? "TD1（卡片，3 × 30）" : "TD3（護照，2 × 44）";
-  return `<section class="card"><div class="row" style="justify-content:space-between"><h2>MRZ・${fmt}</h2>
+  return `<section class="card"><div class="head">${ttl("lines", "#5856d6", `MRZ・${fmt}`)}
       ${m.checksum_valid ? '<span class="pill ok">✓ 檢查碼全部通過</span>' : '<span class="pill bad">✗ 有檢查碼不符</span>'}</div>
     ${mrzBlock(m)}<div class="grid2">${checksTable(m)}${parsedTable(m)}</div></section>`;
 }
@@ -373,13 +585,13 @@ function renderPhoto(r) {
   const res = rec.residence || {};
   const resRows = Object.entries(res).filter(([, v]) => v).map(([k, v]) => `<tr><td>${esc(FIELD[k] || k)}</td><td class="mono">${esc(v)}</td></tr>`).join("");
   return `${status}
-    <section class="card"><h2>影像</h2><div class="imgs">
+    <section class="card">${ttl("photo", "#ff2d55", "影像")}<div class="imgs">
       <figure><img src="${r.original}" alt="上傳的照片，綠框為偵測到的證件四角"><figcaption>上傳照片（綠框：拉正用的資料頁範圍）</figcaption></figure>
       ${r.rectified ? `<figure><img src="${r.rectified}" alt="拉正後的影像"><figcaption>拉正後（OCR 用這張）</figcaption></figure>` : ""}
     </div></section>
-    ${r.mrz ? mrzSection(r.mrz) : `<section class="card"><h2>MRZ</h2><p class="hint">沒有找到 MRZ。請確認 MRZ 在畫面下方、沒有反光遮住，或到「手動輸入 MRZ」直接驗證文字。</p></section>`}
-    <section class="card"><h2>輸出欄位</h2>${fieldsTable(rec)}
-      ${resRows ? `<h2>居留資訊</h2><div class="tbl"><table><tbody>${resRows}</tbody></table></div>` : ""}
+    ${r.mrz ? mrzSection(r.mrz) : `<section class="card">${ttl("lines", "#5856d6", "MRZ")}<p class="hint">沒有找到 MRZ。請確認 MRZ 在畫面下方、沒有反光遮住，或到「手動輸入 MRZ」直接驗證文字。</p></section>`}
+    <section class="card">${ttl("list", "#30b0c7", "輸出欄位")}${fieldsTable(rec)}
+      ${resRows ? `${ttl("home", "#ff9500", "居留資訊", "h3")}<div class="tbl"><table><tbody>${resRows}</tbody></table></div>` : ""}
       <details><summary>MRZ 區域的原始 OCR 文字</summary><pre class="raw">${esc(r.ocr_text) || "（空白）"}</pre></details>
       <details><summary>完整輸出 JSON</summary><pre class="raw">${esc(JSON.stringify(rec, null, 2))}</pre></details>
     </section>`;
@@ -390,7 +602,7 @@ function qualitySection(c, withPreview) {
   const head = c.usable
     ? (c.checks.some(x => x.status === "warn") ? '<span class="pill warn">! 可用，但有提醒</span>' : '<span class="pill ok">✓ 照片可用</span>')
     : '<span class="pill bad">✗ 建議重拍</span>';
-  return `<section class="card"><div class="row" style="justify-content:space-between"><h2>照片檢查</h2>${head}</div>
+  return `<section class="card"><div class="head">${ttl("check", "#34c759", "照片檢查")}${head}</div>
     <ul class="qlist">${items}</ul>
     ${withPreview && c.preview ? `<figure><img src="${c.preview}" alt="上傳的照片，藍框為找到的 MRZ"><figcaption>藍框：找到的 MRZ 位置</figcaption></figure>` : ""}
   </section>`;
@@ -442,13 +654,12 @@ function renderQueue() {
   renderEditArea();
   const n = k => items.filter(it => outcome(it) === k).length;
   const pending = n("pending");
+  const stat = (cls, num, label) => `<div class="stat ${cls}"><b>${num}</b><span>${label}</span></div>`;
   $("#counts").innerHTML = [
-    `<span class="pill">共 ${items.length} 張</span>`,
-    pending ? `<span class="pill"><span class="spinner"></span>處理中 ${pending}</span>` : "",
-    `<span class="pill ok">✓ 免複核 ${n("ok")}</span>`,
-    `<span class="pill warn">! 需複核 ${n("review")}</span>`,
-    `<span class="pill bad">✗ 建議重拍 ${n("unusable")}</span>`,
-    n("failed") ? `<span class="pill bad">✗ 失敗 ${n("failed")}</span>` : "",
+    stat("all", items.length, pending ? `<span class="spinner"></span>全部・處理中 ${pending}` : "全部"),
+    stat("ok", n("ok"), "✓ 免複核"),
+    stat("warn", n("review"), "! 需複核"),
+    stat("bad", n("unusable") + n("failed"), n("failed") ? `✗ 建議重拍／失敗 ${n("failed")}` : "✗ 建議重拍"),
   ].join("");
   $("#queueBody").innerHTML = items.map(it => {
     const rec = it.result && !it.result.error ? effectiveRecord(it) : null;
@@ -472,7 +683,7 @@ function renderDetail() {
   const it = items.find(x => x.id === selected);
   const out = $("#result");
   if (!it) { out.innerHTML = ""; return; }
-  const title = `<div class="row" style="justify-content:space-between"><h2>${esc(it.name)}</h2></div>`;
+  const title = `<div class="detail-head"><span class="eyebrow">詳細結果</span><h2>${esc(it.name)}</h2></div>`;
   if (it.check && it.check.error) { out.innerHTML = title + renderPhoto({error: it.check.error}); return; }
   const q = it.check ? qualitySection(it.check, !it.result) : "";
   if (it.state === "unusable") {
@@ -846,6 +1057,9 @@ $("#exportLog").addEventListener("click", () => {
 // ---- 本機 / 公開網站 ----
 if (!LOCAL) {
   $("#cloudBanner").hidden = false;
+  $("#modeChip").classList.add("warn");
+  $("#modeText").innerHTML = '展示站<span class="long">・勿傳真實證件</span>';
+  $("#footNote").textContent = "展示站：照片在雲端伺服器的記憶體中處理，不會儲存；請勿上傳真實證件";
   $("#subtitle").textContent = "上傳護照或居留證照片，檢查這套流程能不能讀對。照片在雲端伺服器的記憶體中處理，不會儲存。";
 }
 const SAMPLE_LABEL = {"passport_clean.jpg": "一般護照", "passport_glare.jpg": "反光（會建議重拍）",
@@ -854,12 +1068,13 @@ fetch("/api/samples").then(r => r.json()).then(names => {
   const box = $("#samples");
   for (const n of names) {
     const b = document.createElement("button");
-    b.className = "btn ghost small"; b.type = "button"; b.textContent = SAMPLE_LABEL[n] || n;
+    b.className = "sample"; b.type = "button";
+    b.innerHTML = `<img src="/samples/${encodeURIComponent(n)}" alt="" loading="lazy"><span>${esc(SAMPLE_LABEL[n] || n)}</span>`;
     b.addEventListener("click", async () => {
       const blob = await (await fetch("/samples/" + n)).blob();
       addFiles([new File([blob], "範例_" + n, {type: "image/jpeg"})]);
     });
-    box.appendChild(b);
+    $("#sampleGrid").appendChild(b);
   }
   box.hidden = names.length === 0;
 }).catch(() => {});
