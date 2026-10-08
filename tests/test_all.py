@@ -327,6 +327,73 @@ class TestVizLabels(unittest.TestCase):
         lines = [l for l in self._page() if "Personal" not in l.text]
         self.assertEqual(self._extract(lines)["personal_number"]["raw"], "A123456789")
 
+    def _jpn_page(self):
+        """日本護照的日英對照標籤（姓、名分開，名是單數 Given name；本籍取代出生地）；身分為虛構。
+        出生日期被偵測成兩段且框重疊 1 像素（實際 PP-OCR 結果）。"""
+        return [_line("型/Type", 380, 60, 450, 77), _line("P", 380, 86, 400, 112),
+                _line("発行国/Issuing country", 560, 60, 760, 77), _line("JPN", 560, 86, 620, 112),
+                _line("旅券番号/Passport No.", 880, 60, 1060, 77), _line("TK1234567", 880, 86, 1060, 112),
+                _line("姓/Surname", 380, 140, 470, 157), _line("YAMADA", 380, 166, 500, 192),
+                _line("名/Given name", 380, 220, 500, 237), _line("HANAKO", 380, 246, 500, 272),
+                _line("国籍/Nationality", 380, 300, 520, 317), _line("JAPAN", 380, 326, 480, 352),
+                _line("生年月日/Date of birth", 700, 300, 890, 317),
+                _line("15", 700, 330, 746, 356), _line("APR 1990", 745, 330, 912, 356),
+                _line("性別/Sex", 380, 380, 450, 397), _line("F", 380, 406, 400, 432),
+                _line("本籍/Registered Domicile", 700, 380, 920, 397), _line("TOKYO", 700, 406, 800, 432),
+                _line("発行年月日/Date of issue", 380, 460, 590, 477), _line("10 MAR 2020", 380, 486, 580, 512),
+                _line("有効期間満了日/Date of expiry", 380, 540, 640, 557), _line("10 MAR 2030", 380, 566, 580, 592),
+                _line("発行官庁/Authority", 380, 620, 540, 637), _line("MINISTRY OF FOREIGN AFFAIRS", 380, 646, 900, 672)]
+
+    def _extract_jpn(self, lines):
+        from unittest import mock
+        from idpipe import vizlabels
+        from idpipe.templates import TEMPLATES
+        with mock.patch.object(vizlabels, "engine", return_value=lambda img: lines):
+            import numpy as np
+            return vizlabels.extract(np.zeros((880, 1250, 3), np.uint8),
+                                     TEMPLATES["JPN-passport-current"].rules["viz_formats"])
+
+    def test_japanese_labels(self):
+        v = {k: x["raw"] for k, x in self._extract_jpn(self._jpn_page()).items()}
+        self.assertEqual((v["surname"], v["given_names"], v["document_number"]), ("YAMADA", "HANAKO", "TK1234567"))
+        self.assertNotIn("name_native", v)  # 「名/Given name」不能被當成合併的姓名標籤
+        self.assertEqual((v["date_of_birth"], v["date_of_issue"], v["date_of_expiry"]), ("15 APR 1990", "10 MAR 2020", "10 MAR 2030"))
+        self.assertEqual((v["sex"], v["nationality"], v["registered_domicile"]), ("F", "JAPAN", "TOKYO"))
+        self.assertEqual(v["authority"], "MINISTRY OF FOREIGN AFFAIRS")
+
+    def test_japanese_labels_by_kanji_only(self):
+        # 英文標籤讀壞時，日文漢字標籤也認得出來
+        lines = [_line(l.text.split("/")[0], l.x0, l.y0, l.x1, l.y1) if "/" in l.text else l for l in self._jpn_page()]
+        v = {k: x["raw"] for k, x in self._extract_jpn(lines).items()}
+        self.assertEqual((v["document_number"], v["date_of_birth"], v["date_of_expiry"]), ("TK1234567", "15 APR 1990", "10 MAR 2030"))
+
+    def test_domicile_must_be_prefecture(self):
+        # 本籍只有視覺區有：抓到的不是都道府縣（例如浮水印碎片）就當作沒讀到
+        lines = [_line("EN", l.x0, l.y0, l.x1, l.y1) if l.text == "TOKYO" else l for l in self._jpn_page()]
+        self.assertNotIn("registered_domicile", self._extract_jpn(lines))
+
+    def test_jpn_rendered_page_end_to_end(self):
+        try:
+            import onnxruntime  # noqa: F401
+        except ImportError:
+            self.skipTest("onnxruntime 未安裝")
+        from datetime import date
+        import numpy as np
+        from synth.render import cjk_font, render_jpn_passport_page
+        if not cjk_font():
+            self.skipTest("沒有含日文漢字的字型")
+        from idpipe.templates import TEMPLATES
+        from idpipe.vizlabels import extract
+        ident = {"country": "JPN", "surname": "YAMADA", "given_names": "HANAKO", "document_number": "TK1234567",
+                 "nationality": "JPN", "dob": date(1990, 4, 15), "sex": "F", "issue": date(2020, 3, 10),
+                 "expiry": date(2030, 3, 10), "domicile": "OSAKA"}
+        page, _ = render_jpn_passport_page(ident)
+        out = extract(np.array(page)[:, :, ::-1].copy(), TEMPLATES["JPN-passport-current"].rules["viz_formats"])
+        v = {k: x["raw"] for k, x in out.items()}
+        # 國籍、性別、本籍的值壓在紅色 SPECIMEN 浮水印上：靠去色重讀補回來
+        self.assertEqual((v["surname"], v["given_names"], v["sex"], v["registered_domicile"]), ("YAMADA", "HANAKO", "F", "OSAKA"))
+        self.assertEqual((v["date_of_birth"], v["nationality"]), ("15 APR 1990", "JAPAN"))
+
     def test_ppocr_reads_rendered_text(self):
         try:
             import onnxruntime  # noqa: F401
@@ -430,6 +497,13 @@ class TestPipeline(unittest.TestCase):
         viz = {"surname": {"raw": "SATO", "confidence": 0.95}, "given_names": {"raw": "HARUTO", "confidence": 0.95}}
         rec = self._pipe(l1 + "\n" + l2, viz).process(None, b"img7")
         self.assertEqual(rec.review_reasons, ["given_names 視覺區與 MRZ 不一致"])
+
+    def test_unreadable_sex_flags_review(self):
+        # 性別欄沒有檢查碼：M 讀成 N 時各檢查碼照樣通過，必須送複核，不能默默變成 X
+        l1, l2 = build_td3("JPN", "TANAKA", "AOI", "TV9849602", "JPN", "940418", "M", "310730")
+        rec = self._pipe(l1 + "\n" + l2[:20] + "N" + l2[21:]).process(None, b"img_sex")
+        self.assertTrue(rec.mrz["checksum_valid"])
+        self.assertIn("MRZ 性別欄無法辨識（讀到 N）", rec.review_reasons)
 
     def test_low_conf_viz_defers_to_valid_mrz(self):
         # MRZ 檢查碼通過時，低信心的視覺區讀值不觸發不一致，也不拉低 MRZ 欄位信心

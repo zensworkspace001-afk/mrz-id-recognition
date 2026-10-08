@@ -901,6 +901,8 @@ function systemFlags(it) {
       for (const k of ["surname", "given_names"]) add(k, "bad", r);
     } else if (r.startsWith("發照日期")) {
       add("date_of_issue", "bad", r);
+    } else if (r.startsWith("MRZ 性別欄")) {
+      add("sex", "bad", r);
     } else if (/居留證號|統一證號/.test(r)) {
       add("arc_number", "bad", r);
     } else {

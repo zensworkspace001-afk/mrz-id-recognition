@@ -148,6 +148,11 @@ class Pipeline:
         # 姓名欄沒有檢查碼；連續填充符號後又出現文字，通常是雜訊被讀成字母
         if mrz and re.search(r"<{3,}[A-Z]", mrz.name_field):
             r.append("MRZ 姓名欄有雜訊")
+        # 性別欄也沒有檢查碼（總檢查碼不含性別）：只能是 M、F、<，其他字元是讀錯（M 常讀成 N），不能默默當成 X
+        if mrz:
+            sex_char = mrz.line2[7 if mrz.format == "TD1" else 20: (8 if mrz.format == "TD1" else 21)]
+            if sex_char not in ("M", "F", "<"):
+                r.append(f"MRZ 性別欄無法辨識（讀到 {sex_char or '空白'}）")
 
         # 與 MRZ 交叉比對（視覺區值 vs MRZ 值）
         if mrz:

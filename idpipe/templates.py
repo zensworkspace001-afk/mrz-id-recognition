@@ -31,11 +31,28 @@ def _f(*names):
 PASSPORT_COMMON = ["surname", "given_names", "nationality", "sex", "date_of_birth",
                    "place_of_birth", "document_number", "date_of_issue", "date_of_expiry", "authority"]
 
+# 日本護照「本籍」欄印的都道府縣（羅馬拼音、大寫）
+JPN_PREFECTURES = (
+    "HOKKAIDO", "AOMORI", "IWATE", "MIYAGI", "AKITA", "YAMAGATA", "FUKUSHIMA", "IBARAKI", "TOCHIGI", "GUNMA",
+    "SAITAMA", "CHIBA", "TOKYO", "KANAGAWA", "NIIGATA", "TOYAMA", "ISHIKAWA", "FUKUI", "YAMANASHI", "NAGANO",
+    "GIFU", "SHIZUOKA", "AICHI", "MIE", "SHIGA", "KYOTO", "OSAKA", "HYOGO", "NARA", "WAKAYAMA", "TOTTORI",
+    "SHIMANE", "OKAYAMA", "HIROSHIMA", "YAMAGUCHI", "TOKUSHIMA", "KAGAWA", "EHIME", "KOCHI", "FUKUOKA", "SAGA",
+    "NAGASAKI", "KUMAMOTO", "OITA", "MIYAZAKI", "KAGOSHIMA", "OKINAWA")
+
 TEMPLATES: dict[str, Template] = {
     "JPN-passport-current": Template(
-        "JPN-passport-current", "passport", "JPN", "日本護照（現行版，版本以樣本為準）",
-        ["en"], "DD MMM YYYY", _f(*PASSPORT_COMMON),
-        {"date_month_names": "en"}),
+        "JPN-passport-current", "passport", "JPN",
+        "日本護照（現行版）。標籤日英對照（旅券番号/Passport No.、姓/Surname、名/Given name…）；"
+        "沒有出生地，改印本籍（Registered Domicile，都道府縣）。尚未用實拍樣本驗證",
+        ["en"], "DD MMM YYYY",
+        _f(*[n for n in PASSPORT_COMMON if n != "place_of_birth"], "registered_domicile"),
+        {"date_month_names": "en",
+         "viz": "labels",
+         # 護照號碼 2 英文 + 7 數字（例如 TK1234567）；本籍只會是 47 都道府縣之一（只有視覺區有，不能讓雜訊混進來）
+         "viz_formats": {"document_number": r"[A-Z]{2}\d{7}", "nationality": r"JAPAN",
+                         "registered_domicile": "|".join(JPN_PREFECTURES)},
+         "viz_canonical": {"authority": "MINISTRY OF FOREIGN AFFAIRS", "nationality": "JAPAN"}}),
+    # 不設 validity_years：發照日與到期日的對應關係（是否為同月同日）尚未用實拍樣本確認
     "CHN-passport-current": Template(
         "CHN-passport-current", "passport", "CHN", "中國護照，中英對照，含漢字姓名",
         ["en", "ch"], "DD MMM YYYY / 中英對照", _f(*PASSPORT_COMMON, "name_native"),

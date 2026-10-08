@@ -37,7 +37,6 @@ def render_passport_page(ident: dict, date_style="DD MMM YYYY"):
     d = ImageDraw.Draw(img)
     f_lab = ImageFont.truetype(SANS, 18)
     f_val = ImageFont.truetype(MONO, 34)
-    f_mrz = ImageFont.truetype(MONO, 40)
     fields = []
 
     def put(name, label, text, x, y):
@@ -57,6 +56,12 @@ def render_passport_page(ident: dict, date_style="DD MMM YYYY"):
     put("date_of_expiry", "Date of expiry", _fmt_date(ident["expiry"], date_style), 800, 540)
     d.rectangle([60, 90, 320, 400], outline=(150, 150, 150), width=3)  # 照片框
 
+    return _finish_page(img, d, ident, fields)
+
+
+def _finish_page(img, d, ident, fields):
+    """畫 MRZ 與 SPECIMEN 浮水印，回傳 (影像, 標注)。"""
+    f_mrz = ImageFont.truetype(MONO, 40)
     l1, l2 = build_td3(ident["country"], ident["surname"], ident["given_names"], ident["document_number"],
                        ident["nationality"], ident["dob"].strftime("%y%m%d"), ident["sex"],
                        ident["expiry"].strftime("%y%m%d"))
@@ -73,6 +78,46 @@ def render_passport_page(ident: dict, date_style="DD MMM YYYY"):
     ImageDraw.Draw(wm).text((250, 300), "SPECIMEN", fill=(200, 0, 0, 70), font=ImageFont.truetype(SANS, 170))
     img = Image.alpha_composite(img.convert("RGBA"), wm).convert("RGB")
     return img, {"mrz": [l1, l2], "fields": fields}
+
+
+def cjk_font():
+    """含日文漢字的字型（macOS ヒラギノ角ゴシック、Linux Noto CJK、Arial Unicode）；都沒有時回傳 None。"""
+    cands = sorted(Path("/System/Library/Fonts").glob("*W3.ttc")) + [
+        Path("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"), Path("/Library/Fonts/Arial Unicode.ttf")]
+    return next((str(p) for p in cands if p.exists()), None)
+
+
+def render_jpn_passport_page(ident: dict):
+    """日本護照風格的資料頁：欄位標籤依日本護照的日英對照寫法與大致排列（姓、名分開，本籍取代出生地），
+    用來測試標籤定位（vizlabels.py）。不是真實版型的複製品，位置與字型都是示意。需要 CJK 字型（cjk_font）。"""
+    img = Image.new("RGB", (PAGE_W, PAGE_H), (236, 234, 224))
+    d = ImageDraw.Draw(img)
+    f_lab = ImageFont.truetype(cjk_font(), 17)
+    f_val = ImageFont.truetype(MONO, 32)
+    fields = []
+
+    def put(name, label, text, x, y):
+        d.text((x, y), label, fill=(80, 80, 90), font=f_lab)
+        d.text((x, y + 24), text, fill=(20, 20, 20), font=f_val)
+        w = d.textlength(text, font=f_val)
+        if name:
+            fields.append({"name": name, "text": text, "legible": True,
+                           "polygon": [[x, y + 24], [x + w, y + 24], [x + w, y + 64], [x, y + 64]]})
+
+    put(None, "型/Type", "P", 380, 60)
+    put(None, "発行国/Issuing country", "JPN", 560, 60)
+    put("document_number", "旅券番号/Passport No.", ident["document_number"], 880, 60)
+    put("surname", "姓/Surname", ident["surname"], 380, 140)
+    put("given_names", "名/Given name", ident["given_names"], 380, 220)
+    put("nationality", "国籍/Nationality", "JAPAN", 380, 300)
+    put("date_of_birth", "生年月日/Date of birth", _fmt_date(ident["dob"]), 700, 300)
+    put("sex", "性別/Sex", ident["sex"], 380, 380)
+    put("registered_domicile", "本籍/Registered Domicile", ident.get("domicile", "TOKYO"), 700, 380)
+    put("date_of_issue", "発行年月日/Date of issue", _fmt_date(ident["issue"]), 380, 460)
+    put("date_of_expiry", "有効期間満了日/Date of expiry", _fmt_date(ident["expiry"]), 380, 540)
+    put("authority", "発行官庁/Authority", "MINISTRY OF FOREIGN AFFAIRS", 380, 620)
+    d.rectangle([60, 90, 320, 420], outline=(150, 150, 150), width=3)  # 照片框
+    return _finish_page(img, d, ident, fields)
 
 
 def _background(w, h, rng):
